@@ -1,5 +1,8 @@
 import { useEffect, useMemo, useState } from "react";
 import "./App.css";
+import { supabase } from "./supabaseClient";
+import AdminLogin from "./AdminLogin";
+import AdminDashboard from "./AdminDashboard";
 
 const WHATSAPP_NUMBER = "2349061363473"; // Add international digits only, e.g. 2348012345678.
 const BUSINESS_EMAIL = "Igbedelekan6@gmail.com";
@@ -41,16 +44,6 @@ const productData = {
   },
 };
 
-const products = collections.flatMap(({ name: category, folder }) =>
-  productData[category].names.map((name, index) => ({
-    id: `${folder}-${index + 1}`,
-    name,
-    category,
-    price: productData[category].prices[index],
-    image: `/images/${folder}/${encodeURIComponent(productData[category].images[index])}`,
-    badge: index === 0 ? "FEATURED" : index === 1 ? "NEW STYLE" : "",
-  }))
-);
 
 function formatPrice(price) {
   return `₦${Number(price).toLocaleString("en-NG")}`;
@@ -65,7 +58,10 @@ function getSavedCart() {
 }
 
 function App() {
+ 
   const [selectedCategory, setSelectedCategory] = useState("All");
+  const [products, setProducts] = useState([]);
+  const [productsLoading, setProductsLoading] = useState(true);
   const [cart, setCart] = useState(getSavedCart);
   const [cartOpen, setCartOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -87,6 +83,36 @@ function App() {
     const timer = setTimeout(() => setNotice(""), 3000);
     return () => clearTimeout(timer);
   }, [notice]);
+
+ useEffect(() => {
+  async function loadProducts() {
+    const { data, error } = await supabase
+      .from("products")
+      .select("*")
+      .eq("is_active", true)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      console.error("Error loading products:", error.message);
+      setProductsLoading(false);
+      return;
+    }
+
+    const formattedProducts = data.map((product) => ({
+      id: product.id,
+      name: product.name,
+      category: product.category,
+      price: Number(product.price),
+      image: product.image_url,
+      badge: product.is_featured ? "FEATURED" : "",
+    }));
+
+    setProducts(formattedProducts);
+    setProductsLoading(false);
+  }
+
+  loadProducts();
+}, []);
 
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
   const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
@@ -185,7 +211,46 @@ function App() {
     setMenuOpen(false);
     setSearchOpen(false);
   }
+ const isAdminPage = window.location.pathname === "/admin";
+const [adminUser, setAdminUser] = useState(null);
+const [adminChecking, setAdminChecking] = useState(isAdminPage);
 
+useEffect(() => {
+  if (!isAdminPage) return;
+
+  let mounted = true;
+
+  async function checkAdmin() {
+    const { data: { user }, error } = await supabase.auth.getUser();
+
+    if (!mounted) return;
+
+    if (error || user?.email?.toLowerCase() !== "igbedelekan6@gmail.com") {
+      setAdminUser(null);
+      setAdminChecking(false);
+      return;
+    }
+
+    setAdminUser(user);
+    setAdminChecking(false);
+  }
+
+  checkAdmin();
+
+  return () => {
+    mounted = false;
+  };
+}, [isAdminPage]);
+
+if (isAdminPage) {
+  if (adminChecking) {
+    return <p style={{ padding: "40px" }}>Checking administrator access...</p>;
+  }
+
+  return adminUser
+    ? <AdminDashboard />
+    : <AdminLogin />;
+}
   return (
     <div className="store">
 
@@ -649,11 +714,13 @@ function App() {
               </article>
             ))}
 
-            {visibleProducts.length === 0 && (
-              <p className="no-results">
-                No outfits found. Try another search.
-              </p>
-            )}
+            {productsLoading ? (
+  <p className="no-results">Loading our collection...</p>
+) : visibleProducts.length === 0 ? (
+  <p className="no-results">
+    No outfits found. Try another search.
+  </p>
+) : null}
 
           </div>
 
@@ -670,10 +737,6 @@ function App() {
             </button>
           </div>
 
-          <p className="sample-price-note">
-            Product names and prices shown are sample details and should be
-            confirmed by the store owner.
-          </p>
 
         </section>
                 {/* OUR STORY */}
