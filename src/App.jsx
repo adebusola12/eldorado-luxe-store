@@ -607,12 +607,14 @@ if (isAdminPage) {
                   key={collection.name}
                   onClick={() => chooseCollection(collection.name)}
                 >
-                  <img
-                    src={firstProduct.image}
-                    alt={`${collection.name} collection`}
-                    loading="lazy"
-                  />
-
+                 <img
+  src={
+    firstProduct?.image ||
+    "/images/eldorado-hero.png"
+  }
+  alt={`${collection.name} collection`}
+  loading="lazy"
+/>
                   <span className="collection-tile-shade" />
 
                   <span className="collection-tile-text">
