@@ -1,7 +1,7 @@
 
-const crypto = require("crypto");
+import crypto from "crypto";
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
@@ -16,7 +16,6 @@ module.exports = async function handler(req, res) {
       CLOUDINARY_API_SECRET,
     } = process.env;
 
-    // Confirm that all required settings exist.
     if (
       !SUPABASE_URL ||
       !SUPABASE_ANON_KEY ||
@@ -30,7 +29,6 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // Check the administrator's login token.
     const authorization = req.headers.authorization || "";
     const token = authorization.startsWith("Bearer ")
       ? authorization.slice(7)
@@ -69,7 +67,6 @@ module.exports = async function handler(req, res) {
       });
     }
 
-    // Create a signed Cloudinary upload request.
     const timestamp = Math.floor(Date.now() / 1000);
     const folder = "eldorado-luxe/products";
 
@@ -96,4 +93,4 @@ module.exports = async function handler(req, res) {
       error: "Unable to prepare the image upload.",
     });
   }
-};
+}
