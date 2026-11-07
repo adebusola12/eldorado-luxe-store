@@ -32,7 +32,7 @@ function AdminLogin() {
       return;
     }
 
-setSuccess("Login successful! Your admin account is connected.");
+window.location.reload();
   }
 
   return (
