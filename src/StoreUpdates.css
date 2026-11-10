@@ -1,0 +1,177 @@
+/* =========================================
+   ELDORADO LUXE — STOREFRONT UPDATES
+   (imported after App.css so these rules win)
+========================================= */
+
+/* ---------- COLLECTION GRID: smaller tiles, 2 across x 3 down ---------- */
+
+.store .collection-grid {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 26px 22px;
+  max-width: 480px;
+  margin: 0 auto 70px;
+}
+
+.store .collection-grid .collection-tile {
+  aspect-ratio: 4 / 5;
+}
+
+/* 5th collection sits centred on the third row */
+.store .collection-grid .collection-tile:last-child {
+  grid-column: 1 / -1;
+  width: calc(50% - 11px);
+  justify-self: center;
+  aspect-ratio: 4 / 5;
+}
+
+.store .collection-tile-text {
+  right: 10px;
+  bottom: 12px;
+  left: 10px;
+  gap: 5px;
+}
+
+.store .collection-tile-text strong {
+  font-size: 16px;
+}
+
+.store .collection-tile-text em {
+  font-size: 8px;
+}
+
+@media (max-width: 700px) {
+  .store .collection-grid {
+    max-width: 380px;
+    gap: 20px 16px;
+    margin-bottom: 55px;
+  }
+
+  .store .collection-grid .collection-tile:last-child {
+    width: calc(50% - 8px);
+    aspect-ratio: 4 / 5;
+  }
+
+  .store .collection-tile-text strong {
+    font-size: 14px;
+  }
+}
+
+/* PC / laptop: all 5 collections across one row, small gaps, no wasted sides */
+@media (min-width: 901px) {
+  .store .collection-grid {
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 14px;
+    max-width: 1100px;
+    margin: 0 auto 70px;
+  }
+
+  .store .collection-grid .collection-tile,
+  .store .collection-grid .collection-tile:last-child {
+    grid-column: auto;
+    width: auto;
+    justify-self: stretch;
+    aspect-ratio: 3 / 4;
+  }
+}
+
+/* ---------- PRODUCT GRID: 6 per page = 3 x 2 (desktop), 2 x 3 (mobile) ---------- */
+
+.store .product-grid:not(.product-carousel) {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 36px 14px;
+  max-width: 1100px;
+  margin: 0 auto;
+  padding-top: 0;
+}
+
+@media (max-width: 700px) {
+  .store .product-grid:not(.product-carousel) {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 32px 14px;
+  }
+}
+
+/* Keep the single-collection carousel as a horizontal slider */
+.store .product-grid.product-carousel {
+  display: flex;
+  padding-top: 0;
+}
+
+/* ---------- SEARCH CLEAR BUTTON ---------- */
+
+.clear-search {
+  margin-top: 16px;
+  padding: 9px 16px;
+
+  border: 1px solid var(--dark);
+  background: transparent;
+  color: var(--dark);
+
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.clear-search:hover {
+  background: var(--dark);
+  color: #ffffff;
+}
+
+/* ---------- PAGINATION ---------- */
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+
+  margin-top: 45px;
+}
+
+.page-number,
+.page-arrow {
+  min-width: 40px;
+  height: 40px;
+  padding: 0 10px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  border: 1px solid var(--line);
+  background: #ffffff;
+  color: #555555;
+
+  font-size: 12px;
+  font-weight: 600;
+
+  transition: all 0.2s ease;
+}
+
+.page-number:hover:not(.active),
+.page-arrow:hover:not(:disabled) {
+  border-color: var(--dark);
+  color: var(--dark);
+}
+
+.page-number.active {
+  border-color: var(--dark);
+  background: var(--dark);
+  color: #ffffff;
+}
+
+.page-arrow:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+@media (max-width: 700px) {
+  .page-number,
+  .page-arrow {
+    min-width: 36px;
+    height: 36px;
+    padding: 0 8px;
+    font-size: 11px;
+  }
+}

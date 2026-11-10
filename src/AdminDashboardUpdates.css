@@ -1,0 +1,404 @@
+/* =========================================
+   ELDORADO LUXE — ADMIN UPDATES
+   (imported after AdminDashboard.css so these rules win)
+========================================= */
+
+/* ---------- TOP SECTION: greeting, Add product button, 3 stats ---------- */
+
+.admin-content {
+  padding-top: 38px;
+}
+
+.admin-greeting {
+  margin-bottom: 26px;
+}
+
+.admin-greeting h1 {
+  margin: 0 0 8px;
+  color: #20231f;
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: clamp(32px, 4vw, 44px);
+  font-weight: 500;
+  letter-spacing: -0.5px;
+}
+
+.admin-greeting p {
+  max-width: 480px;
+  margin: 0 0 20px;
+  color: #77786f;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+.admin-add-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  min-height: 50px;
+  padding: 0 30px;
+  box-sizing: border-box;
+
+  border: 1px solid #b49a67;
+  background: #b49a67;
+  color: #20231f;
+
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-decoration: none;
+
+  transition: all 0.25s ease;
+}
+
+.admin-add-button span {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.admin-add-button:hover {
+  border-color: #20231f;
+  background: #20231f;
+  color: #d7bd89;
+}
+
+.admin-content .admin-stats {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+  margin-bottom: 32px;
+}
+
+.admin-content .stat-card {
+  min-height: 0;
+  padding: 18px 20px;
+}
+
+.admin-content .stat-card strong {
+  margin: 8px 0 0;
+  font-size: 32px;
+}
+
+/* ---------- MOBILE: header + top section ---------- */
+
+@media (max-width: 700px) {
+
+  .mobile-admin-header {
+    height: 72px;
+    min-height: 72px;
+    padding: 0 18px;
+  }
+
+  .mobile-admin-brand {
+    display: block;
+    width: auto;
+  }
+
+  .mobile-admin-brand img {
+    display: block;
+    width: 130px;
+    height: 46px;
+    padding: 4px 8px;
+    box-sizing: border-box;
+    background: #ffffff;
+    object-fit: contain;
+    object-position: center;
+  }
+
+  .mobile-navigation-overlay {
+    inset: 72px 0 0;
+  }
+
+  .admin-content {
+    padding: 24px 16px 30px;
+  }
+
+  .admin-greeting h1 {
+    font-size: 32px;
+  }
+
+  .admin-add-button {
+    width: 100%;
+  }
+
+  .admin-content .admin-stats {
+    gap: 8px;
+  }
+
+  .admin-content .stat-card {
+    padding: 12px 12px 10px;
+  }
+
+  .admin-content .stat-label {
+    font-size: 10px;
+    letter-spacing: 1px;
+  }
+
+  .admin-content .stat-card strong {
+    margin-top: 6px;
+    font-size: 26px;
+  }
+}
+
+/* ---------- INVENTORY: FILTER BY COLLECTION ---------- */
+
+.inventory-filters {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 22px 0 2px;
+}
+
+.inventory-filter {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 10px 15px;
+
+  border: 1px solid #e2ded4;
+  background: #ffffff;
+  color: #55564c;
+
+  font-family: inherit;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  white-space: nowrap;
+  cursor: pointer;
+
+  transition: all 0.2s ease;
+}
+
+.inventory-filter small {
+  opacity: 0.65;
+  font-size: 11px;
+}
+
+.inventory-filter:hover,
+.inventory-filter.active {
+  border-color: #20231f;
+  background: #20231f;
+  color: #d7bd89;
+}
+
+@media (max-width: 700px) {
+  .inventory-filters {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    padding-bottom: 10px;
+    scrollbar-width: none;
+  }
+
+  .inventory-filters::-webkit-scrollbar {
+    display: none;
+  }
+
+  .inventory-filter {
+    flex-shrink: 0;
+    padding: 9px 12px;
+    font-size: 11px;
+  }
+}
+
+/* ---------- INVENTORY GRID: smaller cards, buttons underneath ---------- */
+
+.inventory-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 20px;
+  padding-top: 22px;
+}
+
+.inventory-grid .inventory-product {
+  display: flex;
+  flex-direction: column;
+}
+
+.inventory-grid .inventory-image-wrap {
+  aspect-ratio: 4 / 5;
+}
+
+.inventory-grid .inventory-product-details {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: 14px;
+}
+
+.inventory-grid .inventory-product-details h3 {
+  display: -webkit-box;
+  min-height: 0;
+  margin: 6px 0;
+  font-size: 15px;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.inventory-grid .inventory-price {
+  margin: 4px 0 14px;
+  font-size: 14px;
+}
+
+/* Edit / Hide / Delete sit in one row underneath each outfit */
+.inventory-grid .inventory-actions {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 6px;
+  margin-top: auto;
+  padding-top: 12px;
+}
+
+.inventory-grid .inventory-toggle,
+.inventory-grid .inventory-delete {
+  min-width: 0;
+  min-height: 34px;
+  padding: 5px 2px;
+  font-size: 11px;
+}
+
+@media (max-width: 1100px) {
+  .inventory-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+/* Phones: two outfits side by side (overrides the old one-per-row layout) */
+@media (max-width: 700px) {
+
+  .inventory-panel .inventory-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+    padding-top: 16px;
+  }
+
+  .inventory-panel .inventory-grid .inventory-product {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .inventory-panel .inventory-grid .inventory-image-wrap {
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    aspect-ratio: 4 / 5;
+  }
+
+  .inventory-panel .inventory-grid .inventory-image-wrap img {
+    height: 100%;
+    min-height: 0;
+  }
+
+  .inventory-panel .inventory-grid .inventory-product-details {
+    padding: 10px 9px 11px;
+    justify-content: flex-start;
+  }
+
+  .inventory-panel .inventory-grid .inventory-category {
+    font-size: 9px;
+    letter-spacing: 0.8px;
+  }
+
+  .inventory-panel .inventory-grid .inventory-product-details h3 {
+    margin: 4px 0;
+    font-size: 13px;
+    line-height: 1.35;
+  }
+
+  .inventory-panel .inventory-grid .inventory-price {
+    margin: 3px 0 10px;
+    font-size: 13px;
+  }
+
+  .inventory-panel .inventory-grid .product-status {
+    top: 6px;
+    left: 6px;
+    padding: 4px 6px;
+    font-size: 7px;
+  }
+
+  .inventory-panel .inventory-grid .inventory-actions {
+    gap: 4px;
+    padding-top: 9px;
+  }
+
+  .inventory-panel .inventory-grid .inventory-toggle,
+  .inventory-panel .inventory-grid .inventory-delete {
+    min-height: 32px;
+    padding: 4px 1px;
+    font-size: 10px;
+  }
+}
+
+@media (max-width: 380px) {
+  .inventory-panel .inventory-grid {
+    gap: 8px;
+  }
+
+  .inventory-panel .inventory-grid .inventory-toggle,
+  .inventory-panel .inventory-grid .inventory-delete {
+    font-size: 9px;
+  }
+}
+
+/* ---------- INVENTORY PAGE NUMBERS ---------- */
+
+.admin-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 30px;
+  padding-top: 24px;
+  border-top: 1px solid #eeeae1;
+}
+
+.admin-page-number,
+.admin-page-arrow {
+  min-width: 40px;
+  height: 40px;
+  padding: 0 10px;
+
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  border: 1px solid #e2ded4;
+  background: #ffffff;
+  color: #55564c;
+
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+
+  transition: all 0.2s ease;
+}
+
+.admin-page-number:hover:not(.active),
+.admin-page-arrow:hover:not(:disabled) {
+  border-color: #b49a67;
+  color: #927849;
+}
+
+.admin-page-number.active {
+  border-color: #20231f;
+  background: #20231f;
+  color: #d7bd89;
+}
+
+.admin-page-arrow:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+@media (max-width: 700px) {
+  .admin-page-number,
+  .admin-page-arrow {
+    min-width: 36px;
+    height: 36px;
+    padding: 0 8px;
+    font-size: 12px;
+  }
+}

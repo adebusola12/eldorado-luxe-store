@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
+import "./StoreUpdates.css";
 import { supabase } from "./supabaseClient";
 import AdminLogin from "./AdminLogin";
 import AdminDashboard from "./AdminDashboard";
@@ -8,6 +9,8 @@ const WHATSAPP_NUMBER = "2349061363473"; // Add international digits only, e.g. 
 const BUSINESS_EMAIL = "Igbedelekan6@gmail.com";
 const BUSINESS_PHONE = "07014969829";
 
+const PRODUCTS_PER_PAGE = 6;
+
 const collections = [
   { name: "Agbada", folder: "agbada", description: "Statement pieces with regal presence." },
   { name: "Senator Wear", folder: "senator", description: "Sharp, refined traditional tailoring." },
@@ -15,35 +18,6 @@ const collections = [
   { name: "Two-Piece", folder: "two-piece", description: "Coordinated looks with a modern edge." },
   { name: "Dansiki", folder: "dansiki", description: "Heritage-inspired style with character." },
 ];
-
-const productData = {
-  Agbada: {
-    names: ["The Grey Monarch", "The Purple Sovereign", "The Sky Blue Royale", "The White Prestige"],
-    prices: [185000, 195000, 210000, 200000],
-    images: ["grey agbada.jpg", "purple agbada.jpg", "sky blue agbada.jpg", "white agbada.jpg"],
-  },
-  "Senator Wear": {
-    names: ["The Black Sovereign", "The Midnight Navy", "The Ivory Prestige", "The Grey Executive"],
-    prices: [85000, 90000, 95000, 80000],
-    images: ["black senator.jpg", "navy blue senator.jpg", "white senator.jpg", "grey senator.jpg"],
-  },
-  Kaftan: {
-    names: ["The Signature Stripes", "The White Prestige", "The Classic Essential", "The Teal Royale"],
-    prices: [75000, 80000, 82000, 78000],
-    images: ["kaftan stripes.jpg", "white kaftan.jpg", "simple kaftan.jpg", "teal blue kaftan.jpg"],
-  },
-  "Two-Piece": {
-    names: ["The Black Signature", "The Emerald Executive", "The Purple Prestige", "The White Signature"],
-    prices: [70000, 75000, 78000, 74000],
-    images: ["black two-piece.jpg", "green two-piece.jpg", "purple two-piece.jpg", "white two-piece.jpg"],
-  },
-  Dansiki: {
-    names: ["The Black Heritage", "The Green Heritage", "The White Heritage", "The Wine Heritage"],
-    prices: [65000, 70000, 72000, 68000],
-    images: ["black dansiki.jpg", "green dansiki.jpg", "white dansiki.jpg", "wine dansiki.jpg"],
-  },
-};
-
 
 function formatPrice(price) {
   return `₦${Number(price).toLocaleString("en-NG")}`;
@@ -57,9 +31,19 @@ function getSavedCart() {
   }
 }
 
+// Scrolls to the product area (small delay so open drawers can finish closing first)
+function scrollToProducts() {
+  setTimeout(() => {
+    document.getElementById("products")?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, 100);
+}
+
 function App() {
- 
   const [selectedCategory, setSelectedCategory] = useState("All");
+  const [currentPage, setCurrentPage] = useState(1);
   const [products, setProducts] = useState([]);
   const [productsLoading, setProductsLoading] = useState(true);
   const [cart, setCart] = useState(getSavedCart);
@@ -86,43 +70,49 @@ function App() {
     return () => clearTimeout(timer);
   }, [notice]);
 
- useEffect(() => {
-  async function loadProducts() {
-    const { data, error } = await supabase
-      .from("products")
-      .select("*")
-      .eq("is_active", true)
-      .order("created_at", { ascending: false });
+  // Always go back to page 1 when the collection or search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedCategory, searchTerm]);
 
-    if (error) {
-      console.error("Error loading products:", error.message);
+  useEffect(() => {
+    async function loadProducts() {
+      const { data, error } = await supabase
+        .from("products")
+        .select("*")
+        .eq("is_active", true)
+        .order("created_at", { ascending: false });
+
+      if (error) {
+        console.error("Error loading products:", error.message);
+        setProductsLoading(false);
+        return;
+      }
+
+      const formattedProducts = data.map((product) => ({
+        id: product.id,
+        name: product.name,
+        category: product.category,
+        price: Number(product.price),
+        image: product.image_url,
+        badge: product.is_featured ? "FEATURED" : "",
+      }));
+
+      setProducts(formattedProducts);
       setProductsLoading(false);
-      return;
     }
 
-    const formattedProducts = data.map((product) => ({
-      id: product.id,
-      name: product.name,
-      category: product.category,
-      price: Number(product.price),
-      image: product.image_url,
-      badge: product.is_featured ? "FEATURED" : "",
-    }));
-
-    setProducts(formattedProducts);
-    setProductsLoading(false);
-  }
-
-  loadProducts();
-}, []);
+    loadProducts();
+  }, []);
 
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
   const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
   const visibleProducts = useMemo(() => {
-    let result = selectedCategory === "All"
-      ? products
-      : products.filter((product) => product.category === selectedCategory);
+    let result =
+      selectedCategory === "All"
+        ? products
+        : products.filter((product) => product.category === selectedCategory);
 
     const query = searchTerm.trim().toLowerCase();
 
@@ -135,44 +125,58 @@ function App() {
     return result;
   }, [selectedCategory, searchTerm, products]);
 
- // AUTOMATIC PRODUCT CAROUSEL
-useEffect(() => {
-  if (selectedCategory === "All" || visibleProducts.length <= 1) {
-    return;
-  }
+  // PAGINATION (only used when viewing all outfits / search results)
+  const isPaginated = selectedCategory === "All";
+  const totalPages = Math.max(1, Math.ceil(visibleProducts.length / PRODUCTS_PER_PAGE));
+  const safePage = Math.min(currentPage, totalPages);
 
-  const carousel = productCarouselRef.current;
+  const displayedProducts = isPaginated
+    ? visibleProducts.slice(
+        (safePage - 1) * PRODUCTS_PER_PAGE,
+        safePage * PRODUCTS_PER_PAGE
+      )
+    : visibleProducts;
 
-  if (!carousel) return;
+  const isSearching = searchTerm.trim() !== "";
 
-  const slideInterval = setInterval(() => {
-    const firstCard = carousel.querySelector(".product-card");
-
-    if (!firstCard) return;
-
-    const cardWidth = firstCard.getBoundingClientRect().width;
-    const styles = window.getComputedStyle(carousel);
-    const gap = parseFloat(styles.columnGap) || 0;
-
-    const maxScroll = carousel.scrollWidth - carousel.clientWidth;
-
-    if (maxScroll <= 5) return;
-
-    if (carousel.scrollLeft >= maxScroll - 5) {
-      carousel.scrollTo({
-        left: 0,
-        behavior: "smooth",
-      });
-    } else {
-      carousel.scrollTo({
-        left: Math.min(carousel.scrollLeft + cardWidth + gap, maxScroll),
-        behavior: "smooth",
-      });
+  // AUTOMATIC PRODUCT CAROUSEL (inside a single collection)
+  useEffect(() => {
+    if (selectedCategory === "All" || visibleProducts.length <= 1) {
+      return;
     }
-  }, 3000);
 
-  return () => clearInterval(slideInterval);
-}, [selectedCategory, visibleProducts.length]);
+    const carousel = productCarouselRef.current;
+
+    if (!carousel) return;
+
+    const slideInterval = setInterval(() => {
+      const firstCard = carousel.querySelector(".product-card");
+
+      if (!firstCard) return;
+
+      const cardWidth = firstCard.getBoundingClientRect().width;
+      const styles = window.getComputedStyle(carousel);
+      const gap = parseFloat(styles.columnGap) || 0;
+
+      const maxScroll = carousel.scrollWidth - carousel.clientWidth;
+
+      if (maxScroll <= 5) return;
+
+      if (carousel.scrollLeft >= maxScroll - 5) {
+        carousel.scrollTo({
+          left: 0,
+          behavior: "smooth",
+        });
+      } else {
+        carousel.scrollTo({
+          left: Math.min(carousel.scrollLeft + cardWidth + gap, maxScroll),
+          behavior: "smooth",
+        });
+      }
+    }, 3000);
+
+    return () => clearInterval(slideInterval);
+  }, [selectedCategory, visibleProducts.length]);
 
   function addToCart(product) {
     setCart((current) => {
@@ -209,14 +213,53 @@ useEffect(() => {
     setCart((current) => current.filter((item) => item.id !== productId));
   }
 
-    function chooseCollection(category) {
+  // Opens one collection (e.g. Agbada) and jumps to its outfits
+  function chooseCollection(category) {
     setSelectedCategory(category);
     setSearchTerm("");
+    setCurrentPage(1);
     setMenuOpen(false);
+    scrollToProducts();
+  }
 
-    document.getElementById("shop")?.scrollIntoView({
-      behavior: "smooth",
-    });
+  // Shows every outfit, starting from page 1
+  function showAllProducts() {
+    setSelectedCategory("All");
+    setSearchTerm("");
+    setCurrentPage(1);
+    setMenuOpen(false);
+    scrollToProducts();
+  }
+
+  function goToPage(page) {
+    setCurrentPage(page);
+    scrollToProducts();
+  }
+
+  // Search: typing "agbada" opens the Agbada collection,
+  // anything else (e.g. "white") searches across all outfits.
+  function submitSearch(event) {
+    event.preventDefault();
+
+    const query = searchTerm.trim().toLowerCase();
+
+    const matchedCollection =
+      query.length >= 3
+        ? collections.find((collection) =>
+            collection.name.toLowerCase().includes(query)
+          )
+        : null;
+
+    if (matchedCollection) {
+      setSelectedCategory(matchedCollection.name);
+      setSearchTerm("");
+    } else {
+      setSelectedCategory("All");
+    }
+
+    setCurrentPage(1);
+    setSearchOpen(false);
+    scrollToProducts();
   }
 
   function checkoutOnWhatsApp() {
@@ -254,46 +297,46 @@ useEffect(() => {
     setMenuOpen(false);
     setSearchOpen(false);
   }
- const isAdminPage = window.location.pathname === "/admin";
-const [adminUser, setAdminUser] = useState(null);
-const [adminChecking, setAdminChecking] = useState(isAdminPage);
 
-useEffect(() => {
-  if (!isAdminPage) return;
+  const isAdminPage = window.location.pathname === "/admin";
+  const [adminUser, setAdminUser] = useState(null);
+  const [adminChecking, setAdminChecking] = useState(isAdminPage);
 
-  let mounted = true;
+  useEffect(() => {
+    if (!isAdminPage) return;
 
-  async function checkAdmin() {
-    const { data: { user }, error } = await supabase.auth.getUser();
+    let mounted = true;
 
-    if (!mounted) return;
+    async function checkAdmin() {
+      const { data: { user }, error } = await supabase.auth.getUser();
 
-    if (error || user?.email?.toLowerCase() !== "igbedelekan6@gmail.com") {
-      setAdminUser(null);
+      if (!mounted) return;
+
+      if (error || user?.email?.toLowerCase() !== "igbedelekan6@gmail.com") {
+        setAdminUser(null);
+        setAdminChecking(false);
+        return;
+      }
+
+      setAdminUser(user);
       setAdminChecking(false);
-      return;
     }
 
-    setAdminUser(user);
-    setAdminChecking(false);
+    checkAdmin();
+
+    return () => {
+      mounted = false;
+    };
+  }, [isAdminPage]);
+
+  if (isAdminPage) {
+    if (adminChecking) {
+      return <p style={{ padding: "40px" }}>Checking administrator access...</p>;
+    }
+
+    return adminUser ? <AdminDashboard /> : <AdminLogin />;
   }
 
-  checkAdmin();
-
-  return () => {
-    mounted = false;
-  };
-}, [isAdminPage]);
-
-if (isAdminPage) {
-  if (adminChecking) {
-    return <p style={{ padding: "40px" }}>Checking administrator access...</p>;
-  }
-
-  return adminUser
-    ? <AdminDashboard />
-    : <AdminLogin />;
-}
   return (
     <div className="store">
 
@@ -386,7 +429,7 @@ if (isAdminPage) {
         <nav className="drawer-nav">
           <a href="#home" onClick={() => setMenuOpen(false)}>Home</a>
 
-          <button onClick={() => chooseCollection("All")}>
+          <button onClick={showAllProducts}>
             Shop All
           </button>
 
@@ -440,9 +483,7 @@ if (isAdminPage) {
               className="dark-button"
               onClick={() => {
                 setCartOpen(false);
-                document.getElementById("shop")?.scrollIntoView({
-                  behavior: "smooth",
-                });
+                showAllProducts();
               }}
             >
               CONTINUE SHOPPING
@@ -514,31 +555,31 @@ if (isAdminPage) {
               </p>
 
               <>
-  <button
-    className="whatsapp-checkout"
-    onClick={checkoutOnWhatsApp}
-  >
-    <svg
-      className="whatsapp-icon"
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-    >
-      <path
-        fill="currentColor"
-        d="M20.52 3.48A11.87 11.87 0 0 0 12.06 0C5.49 0 .14 5.35.14 11.92c0 2.1.55 4.15 1.6 5.96L0 24l6.27-1.64a11.9 11.9 0 0 0 5.79 1.48h.01c6.57 0 11.92-5.35 11.92-11.92a11.84 11.84 0 0 0-3.47-8.44ZM12.06 21.8a9.9 9.9 0 0 1-5.04-1.38l-.36-.21-3.72.97.99-3.63-.24-.37a9.87 9.87 0 1 1 8.37 4.62Zm5.42-7.4c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.25-.46-2.38-1.47-.88-.78-1.48-1.75-1.65-2.05-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.48-.5-.67-.51h-.57c-.2 0-.52.07-.8.37-.27.3-1.04 1.02-1.04 2.49s1.07 2.89 1.22 3.09c.15.2 2.1 3.21 5.08 4.5.71.31 1.27.5 1.7.64.71.23 1.36.2 1.87.12.57-.09 1.76-.72 2.01-1.42.25-.7.25-1.3.17-1.42-.07-.12-.27-.2-.57-.35Z"
-      />
-    </svg>
+                <button
+                  className="whatsapp-checkout"
+                  onClick={checkoutOnWhatsApp}
+                >
+                  <svg
+                    className="whatsapp-icon"
+                    viewBox="0 0 24 24"
+                    aria-hidden="true"
+                  >
+                    <path
+                      fill="currentColor"
+                      d="M20.52 3.48A11.87 11.87 0 0 0 12.06 0C5.49 0 .14 5.35.14 11.92c0 2.1.55 4.15 1.6 5.96L0 24l6.27-1.64a11.9 11.9 0 0 0 5.79 1.48h.01c6.57 0 11.92-5.35 11.92-11.92a11.84 11.84 0 0 0-3.47-8.44ZM12.06 21.8a9.9 9.9 0 0 1-5.04-1.38l-.36-.21-3.72.97.99-3.63-.24-.37a9.87 9.87 0 1 1 8.37 4.62Zm5.42-7.4c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.25-.46-2.38-1.47-.88-.78-1.48-1.75-1.65-2.05-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.48-.5-.67-.51h-.57c-.2 0-.52.07-.8.37-.27.3-1.04 1.02-1.04 2.49s1.07 2.89 1.22 3.09c.15.2 2.1 3.21 5.08 4.5.71.31 1.27.5 1.7.64.71.23 1.36.2 1.87.12.57-.09 1.76-.72 2.01-1.42.25-.7.25-1.3.17-1.42-.07-.12-.27-.2-.57-.35Z"
+                    />
+                  </svg>
 
-    ORDER VIA WHATSAPP
-  </button>
+                  ORDER VIA WHATSAPP
+                </button>
 
-  <button
-    className="continue-link"
-    onClick={() => setCartOpen(false)}
-  >
-    Continue shopping
-  </button>
-</>
+                <button
+                  className="continue-link"
+                  onClick={() => setCartOpen(false)}
+                >
+                  Continue shopping
+                </button>
+              </>
 
             </div>
           </>
@@ -546,12 +587,14 @@ if (isAdminPage) {
         )}
 
       </aside>
-            {/* SEARCH PANEL */}
+
+      {/* SEARCH PANEL */}
       <aside className={`search-panel ${searchOpen ? "is-open" : ""}`}>
 
         <div className="drawer-heading">
           <span>SEARCH THE COLLECTION</span>
           <button
+            type="button"
             onClick={() => setSearchOpen(false)}
             aria-label="Close search"
           >
@@ -559,33 +602,29 @@ if (isAdminPage) {
           </button>
         </div>
 
-        <label className="search-field">
-          <input
-            autoFocus={searchOpen}
-            value={searchTerm}
-            onChange={(event) => {
-              setSearchTerm(event.target.value);
-              setSelectedCategory("All");
-            }}
-            placeholder="Search outfits..."
-          />
-        </label>
+        <form onSubmit={submitSearch}>
+          <label className="search-field">
+            <input
+              autoFocus={searchOpen}
+              value={searchTerm}
+              onChange={(event) => {
+                setSearchTerm(event.target.value);
+                setSelectedCategory("All");
+              }}
+              placeholder="Search outfits..."
+            />
+          </label>
 
-        <p className="search-hint">
-          Search by outfit name or collection.
-        </p>
+          <p className="search-hint">
+            Search by outfit name or collection, e.g. “Agbada”.
+          </p>
 
-        <button
-          className="dark-button"
-          onClick={() => {
-            setSearchOpen(false);
-            document.getElementById("shop")?.scrollIntoView({
-              behavior: "smooth",
-            });
-          }}
-        >
-          VIEW {visibleProducts.length} RESULT(S)
-        </button>
+          <button className="dark-button" type="submit">
+            {isSearching
+              ? `VIEW ${visibleProducts.length} RESULT(S)`
+              : "VIEW ALL OUTFITS"}
+          </button>
+        </form>
 
       </aside>
 
@@ -616,10 +655,6 @@ if (isAdminPage) {
               Discover Nigerian traditional menswear crafted for presence,
               confidence and distinction.
             </p>
-
-            <a href="#shop" className="primary-button">
-              SHOP NOW <span>→</span>
-            </a>
           </div>
 
           <span className="hero-caption">
@@ -663,14 +698,12 @@ if (isAdminPage) {
                   key={collection.name}
                   onClick={() => chooseCollection(collection.name)}
                 >
-                 <img
-  src={
-    firstProduct?.image ||
-    "/images/eldorado-hero.png"
-  }
-  alt={`${collection.name} collection`}
-  loading="lazy"
-/>
+                  <img
+                    src={firstProduct?.image || "/images/eldorado-hero.png"}
+                    alt={`${collection.name} collection`}
+                    loading="lazy"
+                  />
+
                   <span className="collection-tile-shade" />
 
                   <span className="collection-tile-text">
@@ -685,20 +718,34 @@ if (isAdminPage) {
           </div>
 
           {/* PRODUCT SECTION HEADING */}
-          <div className="section-heading product-heading">
+          <div className="section-heading product-heading" id="products">
             <p className="eyebrow">THE ELDORADO EDIT</p>
 
             <h2>
-              {selectedCategory === "All"
-                ? "Discover your next signature."
-                : selectedCategory}
+              {isSearching
+                ? `Results for “${searchTerm.trim()}”`
+                : selectedCategory === "All"
+                  ? "Discover your next signature."
+                  : selectedCategory}
             </h2>
 
             <p>
-              {selectedCategory === "All"
-                ? "Pieces chosen to make every entrance memorable."
-                : collections.find((item) => item.name === selectedCategory)?.description}
+              {isSearching
+                ? `${visibleProducts.length} outfit(s) found.`
+                : selectedCategory === "All"
+                  ? "Pieces chosen to make every entrance memorable."
+                  : collections.find((item) => item.name === selectedCategory)?.description}
             </p>
+
+            {isSearching && (
+              <button
+                type="button"
+                className="clear-search"
+                onClick={() => setSearchTerm("")}
+              >
+                CLEAR SEARCH ×
+              </button>
+            )}
           </div>
 
           {/* CATEGORY FILTERS */}
@@ -706,7 +753,10 @@ if (isAdminPage) {
 
             <button
               className={selectedCategory === "All" ? "filter active" : "filter"}
-              onClick={() => setSelectedCategory("All")}
+              onClick={() => {
+                setSelectedCategory("All");
+                setSearchTerm("");
+              }}
             >
               VIEW ALL
             </button>
@@ -719,7 +769,10 @@ if (isAdminPage) {
                     ? "filter active"
                     : "filter"
                 }
-                onClick={() => setSelectedCategory(collection.name)}
+                onClick={() => {
+                  setSelectedCategory(collection.name);
+                  setSearchTerm("");
+                }}
               >
                 {collection.name}
               </button>
@@ -728,15 +781,13 @@ if (isAdminPage) {
           </div>
 
           {/* PRODUCT GRID / COLLECTION CAROUSEL */}
-<div
-  className={
-    selectedCategory === "All"
-      ? "product-grid"
-      : "product-grid product-carousel"
-  }
-  ref={selectedCategory === "All" ? null : productCarouselRef}
->
-            {visibleProducts.map((product) => (
+          <div
+            className={
+              isPaginated ? "product-grid" : "product-grid product-carousel"
+            }
+            ref={isPaginated ? null : productCarouselRef}
+          >
+            {displayedProducts.map((product) => (
               <article className="product-card" key={product.id}>
 
                 <div className="product-image">
@@ -779,117 +830,151 @@ if (isAdminPage) {
             ))}
 
             {productsLoading ? (
-  <p className="no-results">Loading our collection...</p>
-) : visibleProducts.length === 0 ? (
-  <p className="no-results">
-    No outfits found. Try another search.
-  </p>
-) : null}
+              <p className="no-results">Loading our collection...</p>
+            ) : visibleProducts.length === 0 ? (
+              <p className="no-results">
+                No outfits found. Try another search.
+              </p>
+            ) : null}
 
           </div>
+
+          {/* PAGE NUMBERS (all outfits only) */}
+          {isPaginated && totalPages > 1 && (
+            <nav className="pagination" aria-label="Product pages">
+
+              <button
+                type="button"
+                className="page-arrow"
+                disabled={safePage === 1}
+                onClick={() => goToPage(safePage - 1)}
+                aria-label="Previous page"
+              >
+                ←
+              </button>
+
+              {Array.from({ length: totalPages }, (_, index) => index + 1).map(
+                (page) => (
+                  <button
+                    key={page}
+                    type="button"
+                    className={page === safePage ? "page-number active" : "page-number"}
+                    onClick={() => goToPage(page)}
+                    aria-label={`Page ${page}`}
+                    aria-current={page === safePage ? "page" : undefined}
+                  >
+                    {page}
+                  </button>
+                )
+              )}
+
+              <button
+                type="button"
+                className="page-arrow"
+                disabled={safePage === totalPages}
+                onClick={() => goToPage(safePage + 1)}
+                aria-label="Next page"
+              >
+                →
+              </button>
+
+            </nav>
+          )}
 
           {/* VIEW ALL BUTTON */}
           <div className="view-all-wrap">
             <button
               className="view-all-button"
-              onClick={() => {
-  setSelectedCategory("All");
-  setSearchTerm("");
-
-  document.getElementById("shop")?.scrollIntoView({
-    behavior: "smooth",
-    block: "start",
-  });
-}}
+              onClick={showAllProducts}
             >
               VIEW ALL PRODUCTS <span>→</span>
             </button>
           </div>
 
-
         </section>
 
         {/* SHOPPING BAG SUMMARY BELOW COLLECTION */}
-{cart.length > 0 && collectionCartVisible && (
-  <section className="collection-cart-section" id="collection-cart">
-    <button
-  type="button"
-  className="close-collection-cart"
-  onClick={() => setCollectionCartVisible(false)}
-  aria-label="Close shopping bag summary"
->
-  ×
-</button>
+        {cart.length > 0 && collectionCartVisible && (
+          <section className="collection-cart-section" id="collection-cart">
+            <button
+              type="button"
+              className="close-collection-cart"
+              onClick={() => setCollectionCartVisible(false)}
+              aria-label="Close shopping bag summary"
+            >
+              ×
+            </button>
 
-    <div className="collection-cart-heading">
-      <p className="eyebrow">YOUR SELECTION</p>
-      <h2>Your Shopping <em>Bag.</em></h2>
-      <p>
-        Review your selected pieces before placing your order.
-      </p>
-    </div>
-
-    <div className="collection-cart-items">
-      {cart.map((item) => (
-        <article className="collection-cart-item" key={item.id}>
-
-          <img src={item.image} alt={item.name} />
-
-          <div className="collection-cart-details">
-            <p>{item.category}</p>
-            <h3>{item.name}</h3>
-            <strong>{formatPrice(item.price)}</strong>
-
-            <div className="collection-quantity">
-              <button
-                type="button"
-                onClick={() => changeQuantity(item.id, -1)}
-              >
-                −
-              </button>
-
-              <span>{item.quantity}</span>
-
-              <button
-                type="button"
-                onClick={() => changeQuantity(item.id, 1)}
-              >
-                +
-              </button>
-
-              <button
-                type="button"
-                className="collection-remove"
-                onClick={() => removeFromCart(item.id)}
-              >
-                Remove
-              </button>
+            <div className="collection-cart-heading">
+              <p className="eyebrow">YOUR SELECTION</p>
+              <h2>Your Shopping <em>Bag.</em></h2>
+              <p>
+                Review your selected pieces before placing your order.
+              </p>
             </div>
-          </div>
 
-        </article>
-      ))}
-    </div>
+            <div className="collection-cart-items">
+              {cart.map((item) => (
+                <article className="collection-cart-item" key={item.id}>
 
-    <div className="collection-cart-bottom">
-      <div>
-        <span>Subtotal</span>
-        <h3>{formatPrice(cartTotal)}</h3>
-      </div>
+                  <img src={item.image} alt={item.name} />
 
-      <button
-        type="button"
-        className="whatsapp-checkout"
-        onClick={checkoutOnWhatsApp}
-      >
-        ORDER VIA WHATSAPP
-      </button>
+                  <div className="collection-cart-details">
+                    <p>{item.category}</p>
+                    <h3>{item.name}</h3>
+                    <strong>{formatPrice(item.price)}</strong>
 
-    </div>
+                    <div className="collection-quantity">
+                      <button
+                        type="button"
+                        onClick={() => changeQuantity(item.id, -1)}
+                      >
+                        −
+                      </button>
 
-  </section>
-)}
-                {/* OUR STORY */}
+                      <span>{item.quantity}</span>
+
+                      <button
+                        type="button"
+                        onClick={() => changeQuantity(item.id, 1)}
+                      >
+                        +
+                      </button>
+
+                      <button
+                        type="button"
+                        className="collection-remove"
+                        onClick={() => removeFromCart(item.id)}
+                      >
+                        Remove
+                      </button>
+                    </div>
+                  </div>
+
+                </article>
+              ))}
+            </div>
+
+            <div className="collection-cart-bottom">
+              <div>
+                <span>Subtotal</span>
+                <h3>{formatPrice(cartTotal)}</h3>
+              </div>
+
+              <button
+                type="button"
+                className="whatsapp-checkout"
+                onClick={checkoutOnWhatsApp}
+              >
+                ORDER VIA WHATSAPP
+              </button>
+
+            </div>
+
+          </section>
+        )}
+
+        {/* OUR STORY */}
         <section className="story-section" id="about">
 
           <div className="story-content">
@@ -949,7 +1034,15 @@ if (isAdminPage) {
           <div>
             <h3>QUICK LINKS</h3>
             <a href="#home">Home</a>
-            <a href="#shop">Shop All</a>
+            <a
+              href="#products"
+              onClick={(event) => {
+                event.preventDefault();
+                showAllProducts();
+              }}
+            >
+              Shop All
+            </a>
             <a href="#about">Our Story</a>
             <a href="#contact">Contact</a>
           </div>
@@ -958,9 +1051,12 @@ if (isAdminPage) {
             <h3>COLLECTIONS</h3>
             {collections.map((collection) => (
               <a
-                href="#shop"
+                href="#products"
                 key={collection.name}
-                onClick={() => setSelectedCategory(collection.name)}
+                onClick={(event) => {
+                  event.preventDefault();
+                  chooseCollection(collection.name);
+                }}
               >
                 {collection.name}
               </a>
@@ -977,29 +1073,29 @@ if (isAdminPage) {
           </div>
 
           <div>
-  <h3>FOLLOW US</h3>
-  <a
-    href="https://www.instagram.com/eldoradoluxe/"
-    target="_blank"
-    rel="noopener noreferrer"
-  >
-    Instagram
-  </a>
-  <a
-    href="https://www.tiktok.com/@eldoradoluxe"
-    target="_blank"
-    rel="noopener noreferrer"
-  >
-    TikTok
-  </a>
-  <a
-    href="https://www.google.com/search?q=Eldorado+luxe"
-    target="_blank"
-    rel="noopener noreferrer"
-  >
-    Find us on Google
-  </a>
-</div>
+            <h3>FOLLOW US</h3>
+            <a
+              href="https://www.instagram.com/eldoradoluxe/"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Instagram
+            </a>
+            <a
+              href="https://www.tiktok.com/@eldoradoluxe"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              TikTok
+            </a>
+            <a
+              href="https://www.google.com/search?q=Eldorado+luxe"
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              Find us on Google
+            </a>
+          </div>
 
         </div>
 

@@ -1711,7 +1711,7 @@
     gap: 8px;
   }
 
-  .mobile-navigation a,
+  }  .mobile-navigation a,
 .mobile-navigation button {
   display: flex;
   align-items: center;
@@ -1747,5 +1747,6 @@
 .mobile-navigation a:active,
 .mobile-navigation button:active {
   color: #b49a67;
-  background: rgb(180 154 103 / 10%);
+  background: rgba(180, 154, 103, 0.1);
 }
+

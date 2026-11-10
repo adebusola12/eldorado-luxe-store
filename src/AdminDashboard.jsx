@@ -1,6 +1,83 @@
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "./supabaseClient";
 import "./AdminDashboard.css";
+import "./AdminDashboardUpdates.css";
+
+const CATEGORIES = ["Senator Wear", "Agbada", "Kaftan", "Two-Piece", "Dansiki"];
+const INVENTORY_PER_PAGE = 6;
+
+async function readJsonResponse(response, serviceName) {
+  const responseText = await response.text();
+
+  if (!responseText) {
+    throw new Error(
+      `${serviceName} returned an empty response (HTTP ${response.status}). Please try again.`
+    );
+  }
+
+  try {
+    return JSON.parse(responseText);
+  } catch {
+    throw new Error(
+      `${serviceName} returned an invalid response (HTTP ${response.status}). Please try again.`
+    );
+  }
+}
+
+// Uploads the chosen image to Cloudinary and returns its secure URL
+async function uploadImage(imageFile) {
+  const { data: sessionData, error: sessionError } =
+    await supabase.auth.getSession();
+
+  if (sessionError || !sessionData.session) {
+    throw new Error("Your login session has expired. Please sign in again.");
+  }
+
+  const token = sessionData.session.access_token;
+
+  const signatureResponse = await fetch("/api/sign-cloudinary", {
+    method: "POST",
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  const signatureData = await readJsonResponse(
+    signatureResponse,
+    "Image preparation service"
+  );
+
+  if (!signatureResponse.ok) {
+    throw new Error(signatureData.error || "Unable to prepare image upload.");
+  }
+
+  const uploadData = new FormData();
+
+  uploadData.append("file", imageFile);
+  uploadData.append("api_key", signatureData.apiKey);
+  uploadData.append("timestamp", signatureData.timestamp);
+  uploadData.append("folder", signatureData.folder);
+  uploadData.append("signature", signatureData.signature);
+
+  const uploadResponse = await fetch(
+    `https://api.cloudinary.com/v1_1/${signatureData.cloudName}/image/upload`,
+    {
+      method: "POST",
+      body: uploadData,
+    }
+  );
+
+  const uploadedImage = await readJsonResponse(
+    uploadResponse,
+    "Cloudinary image upload"
+  );
+
+  if (!uploadResponse.ok) {
+    throw new Error(uploadedImage.error?.message || "Image upload failed.");
+  }
+
+  return uploadedImage.secure_url;
+}
 
 function AdminDashboard() {
   const [products, setProducts] = useState([]);
@@ -18,6 +95,10 @@ function AdminDashboard() {
   const imageInputRef = useRef(null);
   const [editingProduct, setEditingProduct] = useState(null);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+
+  // Inventory filter + pages
+  const [inventoryFilter, setInventoryFilter] = useState("All");
+  const [inventoryPage, setInventoryPage] = useState(1);
 
   async function loadProducts() {
     setLoading(true);
@@ -42,39 +123,34 @@ function AdminDashboard() {
   }, []);
 
   useEffect(() => {
-  if (!imageFile) {
-    setImagePreview(editingProduct?.image_url || "");
-    return;
+    if (!imageFile) {
+      setImagePreview(editingProduct?.image_url || "");
+      return;
+    }
+
+    const previewUrl = URL.createObjectURL(imageFile);
+
+    setImagePreview(previewUrl);
+
+    return () => {
+      URL.revokeObjectURL(previewUrl);
+    };
+  }, [imageFile, editingProduct]);
+
+  function resetForm() {
+    setEditingProduct(null);
+    setName("");
+    setCategory("Senator Wear");
+    setPrice("");
+    setDescription("");
+    setImageFile(null);
+
+    if (imageInputRef.current) {
+      imageInputRef.current.value = "";
+    }
   }
-
-  const previewUrl = URL.createObjectURL(imageFile);
-
-  setImagePreview(previewUrl);
-
-  return () => {
-    URL.revokeObjectURL(previewUrl);
-  };
-}, [imageFile, editingProduct]);
 
   async function addProduct(e) {
-
-      async function readJsonResponse(response, serviceName) {
-    const responseText = await response.text();
-
-    if (!responseText) {
-      throw new Error(
-        `${serviceName} returned an empty response (HTTP ${response.status}). Please try again.`
-      );
-    }
-
-    try {
-      return JSON.parse(responseText);
-    } catch {
-      throw new Error(
-        `${serviceName} returned an invalid response (HTTP ${response.status}). Please try again.`
-      );
-    }
-  }
     e.preventDefault();
 
     if (!imageFile) {
@@ -87,61 +163,7 @@ function AdminDashboard() {
     setSuccess("");
 
     try {
-      const { data: sessionData, error: sessionError } =
-        await supabase.auth.getSession();
-
-      if (sessionError || !sessionData.session) {
-        throw new Error(
-          "Your login session has expired. Please sign in again."
-        );
-      }
-
-      const token = sessionData.session.access_token;
-
-      const signatureResponse = await fetch("/api/sign-cloudinary", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
-
-     const signatureData = await readJsonResponse(
-  signatureResponse,
-  "Image preparation service"
-);
-
-      if (!signatureResponse.ok) {
-        throw new Error(
-          signatureData.error || "Unable to prepare image upload."
-        );
-      }
-
-      const uploadData = new FormData();
-
-      uploadData.append("file", imageFile);
-      uploadData.append("api_key", signatureData.apiKey);
-      uploadData.append("timestamp", signatureData.timestamp);
-      uploadData.append("folder", signatureData.folder);
-      uploadData.append("signature", signatureData.signature);
-
-      const uploadResponse = await fetch(
-        `https://api.cloudinary.com/v1_1/${signatureData.cloudName}/image/upload`,
-        {
-          method: "POST",
-          body: uploadData,
-        }
-      );
-
-      const uploadedImage = await readJsonResponse(
-  uploadResponse,
-  "Cloudinary image upload"
-);
-
-      if (!uploadResponse.ok) {
-        throw new Error(
-          uploadedImage.error?.message || "Image upload failed."
-        );
-      }
+      const imageUrl = await uploadImage(imageFile);
 
       const { error: insertError } = await supabase
         .from("products")
@@ -151,7 +173,7 @@ function AdminDashboard() {
             category,
             price: Number(price),
             description: description.trim(),
-            image_url: uploadedImage.secure_url,
+            image_url: imageUrl,
             is_active: true,
           },
         ]);
@@ -161,16 +183,7 @@ function AdminDashboard() {
       }
 
       setSuccess("Product and image added successfully!");
-
-      setName("");
-      setCategory("Senator Wear");
-      setPrice("");
-      setDescription("");
-      setImageFile(null);
-
-      if (imageInputRef.current) {
-        imageInputRef.current.value = "";
-      }
+      resetForm();
 
       await loadProducts();
     } catch (error) {
@@ -201,98 +214,46 @@ function AdminDashboard() {
   }
 
   async function updateProduct(e) {
-  e.preventDefault();
+    e.preventDefault();
 
-  if (!editingProduct) return;
+    if (!editingProduct) return;
 
-  setSaving(true);
-  setError("");
-  setSuccess("");
+    setSaving(true);
+    setError("");
+    setSuccess("");
 
-  try {
-    let imageUrl = editingProduct.image_url;
+    try {
+      let imageUrl = editingProduct.image_url;
 
-    // Upload a replacement image only if one was selected.
-    if (imageFile) {
-      const { data: sessionData, error: sessionError } =
-        await supabase.auth.getSession();
-
-      if (sessionError || !sessionData.session) {
-        throw new Error("Your login session has expired. Please sign in again.");
+      // Upload a replacement image only if one was selected.
+      if (imageFile) {
+        imageUrl = await uploadImage(imageFile);
       }
 
-      const token = sessionData.session.access_token;
+      const { error: updateError } = await supabase
+        .from("products")
+        .update({
+          name: name.trim(),
+          category,
+          price: Number(price),
+          description: description.trim(),
+          image_url: imageUrl,
+        })
+        .eq("id", editingProduct.id);
 
-      const signatureResponse = await fetch("/api/sign-cloudinary", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-      });
+      if (updateError) throw updateError;
 
-      const signatureData = await signatureResponse.json();
+      setSuccess("Product updated successfully!");
+      resetForm();
 
-      if (!signatureResponse.ok) {
-        throw new Error(signatureData.error || "Unable to prepare image upload.");
-      }
-
-      const uploadData = new FormData();
-      uploadData.append("file", imageFile);
-      uploadData.append("api_key", signatureData.apiKey);
-      uploadData.append("timestamp", signatureData.timestamp);
-      uploadData.append("folder", signatureData.folder);
-      uploadData.append("signature", signatureData.signature);
-
-      const uploadResponse = await fetch(
-        `https://api.cloudinary.com/v1_1/${signatureData.cloudName}/image/upload`,
-        {
-          method: "POST",
-          body: uploadData,
-        }
-      );
-
-      const uploadedImage = await uploadResponse.json();
-
-      if (!uploadResponse.ok) {
-        throw new Error(uploadedImage.error?.message || "Image upload failed.");
-      }
-
-      imageUrl = uploadedImage.secure_url;
+      await loadProducts();
+    } catch (error) {
+      setError(error.message || "Unable to update product.");
+    } finally {
+      setSaving(false);
     }
-
-    const { error: updateError } = await supabase
-      .from("products")
-      .update({
-        name: name.trim(),
-        category,
-        price: Number(price),
-        description: description.trim(),
-        image_url: imageUrl,
-      })
-      .eq("id", editingProduct.id);
-
-    if (updateError) throw updateError;
-
-    setSuccess("Product updated successfully!");
-
-    setEditingProduct(null);
-    setName("");
-    setCategory("Senator Wear");
-    setPrice("");
-    setDescription("");
-    setImageFile(null);
-
-    if (imageInputRef.current) {
-      imageInputRef.current.value = "";
-    }
-
-    await loadProducts();
-  } catch (error) {
-    setError(error.message || "Unable to update product.");
-  } finally {
-    setSaving(false);
   }
-}
+
   async function deleteProduct(product) {
     const confirmed = window.confirm(
       `Are you sure you want to delete "${product.name}"?`
@@ -322,78 +283,113 @@ function AdminDashboard() {
     window.location.href = "/admin";
   }
 
+  function chooseInventoryFilter(filter) {
+    setInventoryFilter(filter);
+    setInventoryPage(1);
+  }
+
+  function goToInventoryPage(page) {
+    setInventoryPage(page);
+
+    setTimeout(() => {
+      document.getElementById("inventory")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    }, 50);
+  }
+
   const activeProducts = products.filter(
     (product) => product.is_active
   ).length;
 
   const hiddenProducts = products.length - activeProducts;
 
-  const featuredProducts = products.filter(
-    (product) => product.is_featured
-  ).length;
+  // INVENTORY: filter by collection, then split into pages
+  const filteredProducts =
+    inventoryFilter === "All"
+      ? products
+      : products.filter((product) => product.category === inventoryFilter);
+
+  const inventoryTotalPages = Math.max(
+    1,
+    Math.ceil(filteredProducts.length / INVENTORY_PER_PAGE)
+  );
+  const safeInventoryPage = Math.min(inventoryPage, inventoryTotalPages);
+
+  const inventoryPageProducts = filteredProducts.slice(
+    (safeInventoryPage - 1) * INVENTORY_PER_PAGE,
+    safeInventoryPage * INVENTORY_PER_PAGE
+  );
 
   return (
     <main className="admin-layout">
       {/* MOBILE HEADER */}
-<header className="mobile-admin-header">
-  <a href="#overview" className="mobile-admin-brand">
-    <img
-      src="/images/eldorado-logo.jpg"
-      alt="Eldorado Luxe"
-    />
-    <span>THE LUNGU TAILOR</span>
-  </a>
+      <header className="mobile-admin-header">
+        <a href="#overview" className="mobile-admin-brand">
+          <img
+            src="/images/eldorado-logo.jpg"
+            alt="Eldorado Luxe"
+          />
+        </a>
 
-  <button
-    type="button"
-    className="mobile-menu-button"
-    onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
-    aria-label={isMobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
-    aria-expanded={isMobileMenuOpen}
-  >
-    {isMobileMenuOpen ? "✕" : "☰"}
-  </button>
-</header>
+        <button
+          type="button"
+          className="mobile-menu-button"
+          onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+          aria-label={isMobileMenuOpen ? "Close navigation menu" : "Open navigation menu"}
+          aria-expanded={isMobileMenuOpen}
+        >
+          {isMobileMenuOpen ? "✕" : "☰"}
+        </button>
+      </header>
 
-{/* MOBILE NAVIGATION DRAWER */}
-{isMobileMenuOpen && (
-  <div className="mobile-navigation-overlay">
-    <nav className="mobile-navigation">
+      {/* MOBILE NAVIGATION DRAWER */}
+      {isMobileMenuOpen && (
+        <div
+          className="mobile-navigation-overlay"
+          onClick={() => setIsMobileMenuOpen(false)}
+        >
+          <nav
+            className="mobile-navigation"
+            onClick={(event) => event.stopPropagation()}
+          >
 
-      <a href="#overview" onClick={() => setIsMobileMenuOpen(false)}>
-        <span className="mobile-nav-icon">⌂</span>
-        <span>Dashboard</span>
-      </a>
+            <a href="#overview" onClick={() => setIsMobileMenuOpen(false)}>
+              <span className="mobile-nav-icon">⌂</span>
+              <span>Dashboard</span>
+            </a>
 
-      <a href="#add-product" onClick={() => setIsMobileMenuOpen(false)}>
-        <span className="mobile-nav-icon">＋</span>
-        <span>Add a product</span>
-      </a>
+            <a href="#add-product" onClick={() => setIsMobileMenuOpen(false)}>
+              <span className="mobile-nav-icon">＋</span>
+              <span>Add a product</span>
+            </a>
 
-      <a href="#inventory" onClick={() => setIsMobileMenuOpen(false)}>
-        <span className="mobile-nav-icon">▤</span>
-        <span>Product inventory</span>
-      </a>
+            <a href="#inventory" onClick={() => setIsMobileMenuOpen(false)}>
+              <span className="mobile-nav-icon">▤</span>
+              <span>Product inventory</span>
+            </a>
 
-      <button type="button" onClick={logout}>
-        <span className="mobile-nav-icon">↪</span>
-        <span>Logout</span>
-      </button>
+            <button type="button" onClick={logout}>
+              <span className="mobile-nav-icon">↪</span>
+              <span>Logout</span>
+            </button>
 
-    </nav>
-  </div>
-)}
+          </nav>
+        </div>
+      )}
+
       {/* SIDEBAR */}
       <aside className="admin-sidebar">
         <a href="#overview" className="admin-sidebar-brand">
-  <img
-    src="/images/eldorado-logo.jpg"
-    alt="Eldorado Luxe - The Lungu Tailor"
-    className="admin-sidebar-logo"
-  />
+          <img
+            src="/images/eldorado-logo.jpg"
+            alt="Eldorado Luxe - The Lungu Tailor"
+            className="admin-sidebar-logo"
+          />
 
-  <small>THE LUNGU TAILOR</small>
-</a>
+          <small>THE LUNGU TAILOR</small>
+        </a>
 
         <div className="sidebar-divider"></div>
 
@@ -436,63 +432,39 @@ function AdminDashboard() {
 
       {/* MAIN CONTENT */}
       <section className="admin-main">
-        <header className="admin-topbar">
-          <div>
-            <p className="topbar-label">ELDORADO LUXE / ADMINISTRATION</p>
-            <p className="topbar-status">
-              <span></span> Store management workspace
-            </p>
-          </div>
-
-          <button
-            type="button"
-            className="topbar-logout"
-            onClick={logout}
-          >
-            Sign out
-          </button>
-        </header>
-
         <div className="admin-content">
           {/* OVERVIEW */}
-          <section id="overview" className="admin-welcome">
-            <div>
-              <p className="admin-eyebrow">YOUR STORE AT A GLANCE</p>
-              <h1>Welcome back.</h1>
-              <p>
-                Manage your collections and keep your store looking its best.
-              </p>
-            </div>
+          <section id="overview" className="admin-greeting">
+            <h1>Welcome back.</h1>
+            <p>
+              Manage your collections and keep your store looking its best.
+            </p>
 
-            <div className="welcome-decoration">
-              <span>EL</span>
-            </div>
+            <a
+              href="#add-product"
+              className="admin-add-button"
+              onClick={resetForm}
+            >
+              <span>＋</span>
+              ADD PRODUCT
+            </a>
           </section>
 
           {/* STATISTICS */}
           <section className="admin-stats">
             <article className="stat-card">
-              <span className="stat-label">TOTAL PRODUCTS</span>
+              <span className="stat-label">TOTAL</span>
               <strong>{products.length}</strong>
-              <small>Products in your store</small>
             </article>
 
             <article className="stat-card">
               <span className="stat-label">PUBLISHED</span>
               <strong>{activeProducts}</strong>
-              <small>Visible on your storefront</small>
             </article>
 
             <article className="stat-card">
               <span className="stat-label">HIDDEN</span>
               <strong>{hiddenProducts}</strong>
-              <small>Not currently displayed</small>
-            </article>
-
-            <article className="stat-card">
-              <span className="stat-label">FEATURED</span>
-              <strong>{featuredProducts}</strong>
-              <small>Featured products</small>
             </article>
           </section>
 
@@ -524,10 +496,10 @@ function AdminDashboard() {
               <span className="panel-number">01</span>
             </div>
 
-           <form
-  onSubmit={editingProduct ? updateProduct : addProduct}
-  className="admin-product-form"
->
+            <form
+              onSubmit={editingProduct ? updateProduct : addProduct}
+              className="admin-product-form"
+            >
               <div className="form-grid">
                 <div className="admin-field">
                   <label htmlFor="product-name">Product name</label>
@@ -537,7 +509,6 @@ function AdminDashboard() {
                     value={name}
                     onChange={(e) => setName(e.target.value)}
                     placeholder="e.g. Classic Senator Set"
-                    
                   />
                 </div>
 
@@ -548,11 +519,9 @@ function AdminDashboard() {
                     value={category}
                     onChange={(e) => setCategory(e.target.value)}
                   >
-                    <option>Senator Wear</option>
-                    <option>Agbada</option>
-                    <option>Kaftan</option>
-                    <option>Two-Piece</option>
-                    <option>Dansiki</option>
+                    {CATEGORIES.map((item) => (
+                      <option key={item}>{item}</option>
+                    ))}
                   </select>
                 </div>
 
@@ -570,61 +539,61 @@ function AdminDashboard() {
                   />
                 </div>
 
-               <div className="admin-field full-width">
-  <label htmlFor="product-image">Product photograph</label>
+                <div className="admin-field full-width">
+                  <label htmlFor="product-image">Product photograph</label>
 
-  <div className="image-upload-box">
-    <div className="image-preview-area">
-      {imagePreview ? (
-        <img
-          src={imagePreview}
-          alt="Product preview"
-          className="image-preview"
-        />
-      ) : (
-        <div className="image-upload-placeholder">
-          <span>↑</span>
-          <strong>YOUR PRODUCT PHOTOGRAPH</strong>
-          <small>Upload a high-quality outfit image</small>
-        </div>
-      )}
-    </div>
+                  <div className="image-upload-box">
+                    <div className="image-preview-area">
+                      {imagePreview ? (
+                        <img
+                          src={imagePreview}
+                          alt="Product preview"
+                          className="image-preview"
+                        />
+                      ) : (
+                        <div className="image-upload-placeholder">
+                          <span>↑</span>
+                          <strong>YOUR PRODUCT PHOTOGRAPH</strong>
+                          <small>Upload a high-quality outfit image</small>
+                        </div>
+                      )}
+                    </div>
 
-    <div className="image-upload-controls">
-      <div>
-        <strong>
-          {imageFile
-            ? imageFile.name
-            : editingProduct
-              ? "Current product image"
-              : "No photograph selected"}
-        </strong>
+                    <div className="image-upload-controls">
+                      <div>
+                        <strong>
+                          {imageFile
+                            ? imageFile.name
+                            : editingProduct
+                              ? "Current product image"
+                              : "No photograph selected"}
+                        </strong>
 
-        <small>
-          JPG, PNG or WEBP · Choose a clear, high-quality image.
-        </small>
-      </div>
+                        <small>
+                          JPG, PNG or WEBP · Choose a clear, high-quality image.
+                        </small>
+                      </div>
 
-      <input
-        id="product-image"
-        ref={imageInputRef}
-        className="image-file-input"
-        type="file"
-        accept="image/*"
-        onChange={(e) =>
-          setImageFile(e.target.files[0] || null)
-        }
-        required={!editingProduct}
-      />
-    </div>
-  </div>
+                      <input
+                        id="product-image"
+                        ref={imageInputRef}
+                        className="image-file-input"
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) =>
+                          setImageFile(e.target.files[0] || null)
+                        }
+                        required={!editingProduct}
+                      />
+                    </div>
+                  </div>
 
-  {editingProduct && (
-    <small className="selected-file">
-      Leave empty to retain the current product photograph.
-    </small>
-  )}
-</div>
+                  {editingProduct && (
+                    <small className="selected-file">
+                      Leave empty to retain the current product photograph.
+                    </small>
+                  )}
+                </div>
 
                 <div className="admin-field full-width">
                   <label htmlFor="product-description">Description</label>
@@ -642,42 +611,33 @@ function AdminDashboard() {
                 <p>
                   Images are securely uploaded and stored with your product.
                 </p>
+
                 {editingProduct && (
-  <button
-    type="button"
-    className="inventory-delete"
-    onClick={() => {
-      setEditingProduct(null);
-      setName("");
-      setCategory("Senator Wear");
-      setPrice("");
-      setDescription("");
-      setImageFile(null);
-
-      if (imageInputRef.current) {
-        imageInputRef.current.value = "";
-      }
-
-      setError("");
-      setSuccess("");
-    }}
-  >
-    CANCEL EDITING
-  </button>
-)}
+                  <button
+                    type="button"
+                    className="inventory-delete"
+                    onClick={() => {
+                      resetForm();
+                      setError("");
+                      setSuccess("");
+                    }}
+                  >
+                    CANCEL EDITING
+                  </button>
+                )}
 
                 <button
                   type="submit"
                   className="admin-primary-button"
                   disabled={saving}
                 >
-                 {saving
-  ? editingProduct
-    ? "SAVING CHANGES..."
-    : "UPLOADING PRODUCT..."
-  : editingProduct
-    ? "SAVE CHANGES"
-    : "ADD PRODUCT"}
+                  {saving
+                    ? editingProduct
+                      ? "SAVING CHANGES..."
+                      : "UPLOADING PRODUCT..."
+                    : editingProduct
+                      ? "SAVE CHANGES"
+                      : "ADD PRODUCT"}
                   <span>→</span>
                 </button>
               </div>
@@ -694,8 +654,34 @@ function AdminDashboard() {
               </div>
 
               <span className="inventory-count">
-                {products.length} PRODUCTS
+                {filteredProducts.length} PRODUCTS
               </span>
+            </div>
+
+            {/* FILTER BY COLLECTION */}
+            <div className="inventory-filters">
+              {["All", ...CATEGORIES].map((filter) => {
+                const count =
+                  filter === "All"
+                    ? products.length
+                    : products.filter((product) => product.category === filter).length;
+
+                return (
+                  <button
+                    key={filter}
+                    type="button"
+                    className={
+                      inventoryFilter === filter
+                        ? "inventory-filter active"
+                        : "inventory-filter"
+                    }
+                    onClick={() => chooseInventoryFilter(filter)}
+                  >
+                    {filter}
+                    <small>{count}</small>
+                  </button>
+                );
+              })}
             </div>
 
             {loading ? (
@@ -705,16 +691,17 @@ function AdminDashboard() {
                 No products have been added yet. Your collection will appear
                 here once you add your first outfit.
               </p>
+            ) : filteredProducts.length === 0 ? (
+              <p className="inventory-empty">
+                No outfits in this collection yet.
+              </p>
             ) : (
-              <div className="product-grid">
-                {products.map((product) => (
+              <div className="inventory-grid">
+                {inventoryPageProducts.map((product) => (
                   <article className="inventory-product" key={product.id}>
                     <div className="inventory-image-wrap">
                       <img
-                        src={
-                          product.image_url ||
-                          "/images/eldorado-hero.png"
-                        }
+                        src={product.image_url || "/images/eldorado-hero.png"}
                         alt={product.name}
                         loading="lazy"
                       />
@@ -736,62 +723,105 @@ function AdminDashboard() {
                       <h3>{product.name}</h3>
 
                       <strong className="inventory-price">
-                        ₦
-                        {Number(product.price).toLocaleString("en-NG")}
+                        ₦{Number(product.price).toLocaleString("en-NG")}
                       </strong>
 
                       <div className="inventory-actions">
 
-  {/* EDIT BUTTON */}
-  <button
-    type="button"
-    className="inventory-toggle"
-    onClick={() => {
-      setEditingProduct(product);
-      setName(product.name);
-      setCategory(product.category);
-      setPrice(String(product.price));
-      setDescription(product.description || "");
-      setImageFile(null);
+                        {/* EDIT BUTTON */}
+                        <button
+                          type="button"
+                          className="inventory-toggle"
+                          onClick={() => {
+                            setEditingProduct(product);
+                            setName(product.name);
+                            setCategory(product.category);
+                            setPrice(String(product.price));
+                            setDescription(product.description || "");
+                            setImageFile(null);
 
-      if (imageInputRef.current) {
-        imageInputRef.current.value = "";
-      }
+                            if (imageInputRef.current) {
+                              imageInputRef.current.value = "";
+                            }
 
-      setError("");
-      setSuccess("");
+                            setError("");
+                            setSuccess("");
 
-      document.getElementById("add-product")?.scrollIntoView({
-        behavior: "smooth",
-      });
-    }}
-  >
-    Edit
-  </button>
+                            document.getElementById("add-product")?.scrollIntoView({
+                              behavior: "smooth",
+                            });
+                          }}
+                        >
+                          Edit
+                        </button>
 
-  {/* HIDE / PUBLISH BUTTON */}
-  <button
-    type="button"
-    className="inventory-toggle"
-    onClick={() => toggleProduct(product)}
-  >
-    {product.is_active ? "Hide product" : "Publish"}
-  </button>
+                        {/* HIDE / PUBLISH BUTTON */}
+                        <button
+                          type="button"
+                          className="inventory-toggle"
+                          onClick={() => toggleProduct(product)}
+                        >
+                          {product.is_active ? "Hide" : "Publish"}
+                        </button>
 
-  {/* DELETE BUTTON */}
-  <button
-    type="button"
-    className="inventory-delete"
-    onClick={() => deleteProduct(product)}
-  >
-    Delete
-  </button>
+                        {/* DELETE BUTTON */}
+                        <button
+                          type="button"
+                          className="inventory-delete"
+                          onClick={() => deleteProduct(product)}
+                        >
+                          Delete
+                        </button>
 
-</div>
+                      </div>
                     </div>
                   </article>
                 ))}
               </div>
+            )}
+
+            {/* PAGE NUMBERS */}
+            {!loading && inventoryTotalPages > 1 && (
+              <nav className="admin-pagination" aria-label="Inventory pages">
+                <button
+                  type="button"
+                  className="admin-page-arrow"
+                  disabled={safeInventoryPage === 1}
+                  onClick={() => goToInventoryPage(safeInventoryPage - 1)}
+                  aria-label="Previous page"
+                >
+                  ←
+                </button>
+
+                {Array.from({ length: inventoryTotalPages }, (_, index) => index + 1).map(
+                  (page) => (
+                    <button
+                      key={page}
+                      type="button"
+                      className={
+                        page === safeInventoryPage
+                          ? "admin-page-number active"
+                          : "admin-page-number"
+                      }
+                      onClick={() => goToInventoryPage(page)}
+                      aria-label={`Page ${page}`}
+                      aria-current={page === safeInventoryPage ? "page" : undefined}
+                    >
+                      {page}
+                    </button>
+                  )
+                )}
+
+                <button
+                  type="button"
+                  className="admin-page-arrow"
+                  disabled={safeInventoryPage === inventoryTotalPages}
+                  onClick={() => goToInventoryPage(safeInventoryPage + 1)}
+                  aria-label="Next page"
+                >
+                  →
+                </button>
+              </nav>
             )}
           </section>
 
