@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import "./App.css";
 import { supabase } from "./supabaseClient";
 import AdminLogin from "./AdminLogin";
@@ -63,11 +63,13 @@ function App() {
   const [products, setProducts] = useState([]);
   const [productsLoading, setProductsLoading] = useState(true);
   const [cart, setCart] = useState(getSavedCart);
+  const [collectionCartVisible, setCollectionCartVisible] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [notice, setNotice] = useState("");
+  const productCarouselRef = useRef(null);
 
   useEffect(() => {
     localStorage.setItem("eldorado-cart", JSON.stringify(cart));
@@ -131,7 +133,46 @@ function App() {
     }
 
     return result;
-  }, [selectedCategory, searchTerm]);
+  }, [selectedCategory, searchTerm, products]);
+
+ // AUTOMATIC PRODUCT CAROUSEL
+useEffect(() => {
+  if (selectedCategory === "All" || visibleProducts.length <= 1) {
+    return;
+  }
+
+  const carousel = productCarouselRef.current;
+
+  if (!carousel) return;
+
+  const slideInterval = setInterval(() => {
+    const firstCard = carousel.querySelector(".product-card");
+
+    if (!firstCard) return;
+
+    const cardWidth = firstCard.getBoundingClientRect().width;
+    const styles = window.getComputedStyle(carousel);
+    const gap = parseFloat(styles.columnGap) || 0;
+
+    const maxScroll = carousel.scrollWidth - carousel.clientWidth;
+
+    if (maxScroll <= 5) return;
+
+    if (carousel.scrollLeft >= maxScroll - 5) {
+      carousel.scrollTo({
+        left: 0,
+        behavior: "smooth",
+      });
+    } else {
+      carousel.scrollTo({
+        left: Math.min(carousel.scrollLeft + cardWidth + gap, maxScroll),
+        behavior: "smooth",
+      });
+    }
+  }, 3000);
+
+  return () => clearInterval(slideInterval);
+}, [selectedCategory, visibleProducts.length]);
 
   function addToCart(product) {
     setCart((current) => {
@@ -149,6 +190,7 @@ function App() {
     });
 
     setNotice(`${product.name} added to your bag.`);
+    setCollectionCartVisible(true);
   }
 
   function changeQuantity(productId, amount) {
@@ -166,6 +208,7 @@ function App() {
   function removeFromCart(productId) {
     setCart((current) => current.filter((item) => item.id !== productId));
   }
+
     function chooseCollection(category) {
     setSelectedCategory(category);
     setSearchTerm("");
@@ -470,19 +513,32 @@ if (isAdminPage) {
                 on WhatsApp.
               </p>
 
-              <button
-                className="whatsapp-checkout"
-                onClick={checkoutOnWhatsApp}
-              >
-                ORDER VIA WHATSAPP <span>↗</span>
-              </button>
+              <>
+  <button
+    className="whatsapp-checkout"
+    onClick={checkoutOnWhatsApp}
+  >
+    <svg
+      className="whatsapp-icon"
+      viewBox="0 0 24 24"
+      aria-hidden="true"
+    >
+      <path
+        fill="currentColor"
+        d="M20.52 3.48A11.87 11.87 0 0 0 12.06 0C5.49 0 .14 5.35.14 11.92c0 2.1.55 4.15 1.6 5.96L0 24l6.27-1.64a11.9 11.9 0 0 0 5.79 1.48h.01c6.57 0 11.92-5.35 11.92-11.92a11.84 11.84 0 0 0-3.47-8.44ZM12.06 21.8a9.9 9.9 0 0 1-5.04-1.38l-.36-.21-3.72.97.99-3.63-.24-.37a9.87 9.87 0 1 1 8.37 4.62Zm5.42-7.4c-.3-.15-1.76-.87-2.03-.97-.27-.1-.47-.15-.67.15-.2.3-.77.97-.94 1.17-.17.2-.35.22-.65.07-.3-.15-1.25-.46-2.38-1.47-.88-.78-1.48-1.75-1.65-2.05-.17-.3-.02-.46.13-.61.13-.13.3-.35.45-.52.15-.17.2-.3.3-.5.1-.2.05-.37-.02-.52-.07-.15-.67-1.62-.92-2.22-.24-.58-.48-.5-.67-.51h-.57c-.2 0-.52.07-.8.37-.27.3-1.04 1.02-1.04 2.49s1.07 2.89 1.22 3.09c.15.2 2.1 3.21 5.08 4.5.71.31 1.27.5 1.7.64.71.23 1.36.2 1.87.12.57-.09 1.76-.72 2.01-1.42.25-.7.25-1.3.17-1.42-.07-.12-.27-.2-.57-.35Z"
+      />
+    </svg>
 
-              <button
-                className="continue-link"
-                onClick={() => setCartOpen(false)}
-              >
-                Continue shopping
-              </button>
+    ORDER VIA WHATSAPP
+  </button>
+
+  <button
+    className="continue-link"
+    onClick={() => setCartOpen(false)}
+  >
+    Continue shopping
+  </button>
+</>
 
             </div>
           </>
@@ -671,9 +727,15 @@ if (isAdminPage) {
 
           </div>
 
-          {/* PRODUCT GRID */}
-          <div className="product-grid">
-
+          {/* PRODUCT GRID / COLLECTION CAROUSEL */}
+<div
+  className={
+    selectedCategory === "All"
+      ? "product-grid"
+      : "product-grid product-carousel"
+  }
+  ref={selectedCategory === "All" ? null : productCarouselRef}
+>
             {visibleProducts.map((product) => (
               <article className="product-card" key={product.id}>
 
@@ -731,9 +793,14 @@ if (isAdminPage) {
             <button
               className="view-all-button"
               onClick={() => {
-                setSelectedCategory("All");
-                setSearchTerm("");
-              }}
+  setSelectedCategory("All");
+  setSearchTerm("");
+
+  document.getElementById("shop")?.scrollIntoView({
+    behavior: "smooth",
+    block: "start",
+  });
+}}
             >
               VIEW ALL PRODUCTS <span>→</span>
             </button>
@@ -741,6 +808,87 @@ if (isAdminPage) {
 
 
         </section>
+
+        {/* SHOPPING BAG SUMMARY BELOW COLLECTION */}
+{cart.length > 0 && collectionCartVisible && (
+  <section className="collection-cart-section" id="collection-cart">
+    <button
+  type="button"
+  className="close-collection-cart"
+  onClick={() => setCollectionCartVisible(false)}
+  aria-label="Close shopping bag summary"
+>
+  ×
+</button>
+
+    <div className="collection-cart-heading">
+      <p className="eyebrow">YOUR SELECTION</p>
+      <h2>Your Shopping <em>Bag.</em></h2>
+      <p>
+        Review your selected pieces before placing your order.
+      </p>
+    </div>
+
+    <div className="collection-cart-items">
+      {cart.map((item) => (
+        <article className="collection-cart-item" key={item.id}>
+
+          <img src={item.image} alt={item.name} />
+
+          <div className="collection-cart-details">
+            <p>{item.category}</p>
+            <h3>{item.name}</h3>
+            <strong>{formatPrice(item.price)}</strong>
+
+            <div className="collection-quantity">
+              <button
+                type="button"
+                onClick={() => changeQuantity(item.id, -1)}
+              >
+                −
+              </button>
+
+              <span>{item.quantity}</span>
+
+              <button
+                type="button"
+                onClick={() => changeQuantity(item.id, 1)}
+              >
+                +
+              </button>
+
+              <button
+                type="button"
+                className="collection-remove"
+                onClick={() => removeFromCart(item.id)}
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+
+        </article>
+      ))}
+    </div>
+
+    <div className="collection-cart-bottom">
+      <div>
+        <span>Subtotal</span>
+        <h3>{formatPrice(cartTotal)}</h3>
+      </div>
+
+      <button
+        type="button"
+        className="whatsapp-checkout"
+        onClick={checkoutOnWhatsApp}
+      >
+        ORDER VIA WHATSAPP
+      </button>
+
+    </div>
+
+  </section>
+)}
                 {/* OUR STORY */}
         <section className="story-section" id="about">
 

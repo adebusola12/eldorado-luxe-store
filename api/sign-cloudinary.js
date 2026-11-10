@@ -16,18 +16,21 @@ export default async function handler(req, res) {
       CLOUDINARY_API_SECRET,
     } = process.env;
 
-    if (
-      !SUPABASE_URL ||
-      !SUPABASE_ANON_KEY ||
-      !ADMIN_EMAIL ||
-      !CLOUDINARY_CLOUD_NAME ||
-      !CLOUDINARY_API_KEY ||
-      !CLOUDINARY_API_SECRET
-    ) {
-      return res.status(500).json({
-        error: "Server configuration is incomplete.",
-      });
-    }
+    const missingVariables = [];
+
+if (!SUPABASE_URL) missingVariables.push("SUPABASE_URL");
+if (!SUPABASE_ANON_KEY) missingVariables.push("SUPABASE_ANON_KEY");
+if (!ADMIN_EMAIL) missingVariables.push("ADMIN_EMAIL");
+if (!CLOUDINARY_CLOUD_NAME) missingVariables.push("CLOUDINARY_CLOUD_NAME");
+if (!CLOUDINARY_API_KEY) missingVariables.push("CLOUDINARY_API_KEY");
+if (!CLOUDINARY_API_SECRET) missingVariables.push("CLOUDINARY_API_SECRET");
+
+if (missingVariables.length > 0) {
+  return res.status(500).json({
+    error: "Server configuration is incomplete.",
+    missing: missingVariables,
+  });
+}
 
     const authorization = req.headers.authorization || "";
     const token = authorization.startsWith("Bearer ")
