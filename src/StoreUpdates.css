@@ -16,11 +16,11 @@
   aspect-ratio: 4 / 5;
 }
 
-/* 5th collection sits centred on the third row */
+/* 5th collection sits in the first column of the third row, same size as the others */
 .store .collection-grid .collection-tile:last-child {
-  grid-column: 1 / -1;
-  width: calc(50% - 11px);
-  justify-self: center;
+  grid-column: 1;
+  width: auto;
+  justify-self: stretch;
   aspect-ratio: 4 / 5;
 }
 
@@ -47,7 +47,8 @@
   }
 
   .store .collection-grid .collection-tile:last-child {
-    width: calc(50% - 8px);
+    grid-column: 1;
+    width: auto;
     aspect-ratio: 4 / 5;
   }
 

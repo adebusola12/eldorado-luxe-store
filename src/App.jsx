@@ -4,12 +4,40 @@ import "./StoreUpdates.css";
 import { supabase } from "./supabaseClient";
 import AdminLogin from "./AdminLogin";
 import AdminDashboard from "./AdminDashboard";
+import "./NewSections.css";
+import { useCustomer } from "./useCustomer";
+import { useSiteContent } from "./siteContent";
+import FounderSection from "./FounderSection";
+import CollectionStories from "./CollectionStories";
+import GallerySection from "./GallerySection";
+import ReviewsSection from "./ReviewsSection";
+import ConsultationSection from "./ConsultationSection";
+import AccountSection from "./AccountSection";
 
 const WHATSAPP_NUMBER = "2349061363473"; // Add international digits only, e.g. 2348012345678.
 const BUSINESS_EMAIL = "Igbedelekan6@gmail.com";
 const BUSINESS_PHONE = "07014969829";
 
 const PRODUCTS_PER_PAGE = 6;
+
+// Pictures that fade in one after the other in the hero.
+// Put the image files in the "public/images" folder with these exact names.
+// A picture that is missing is simply skipped, so the site never breaks.
+const HERO_SLIDES = [
+  "/images/eldorado-hero.png",
+  "/images/hero-senator.jpeg",
+  "/images/hero-two-piece.jpeg",
+];
+const HERO_SECONDS = 6;
+
+// Messages that scroll across the top of the website
+const ANNOUNCEMENTS = [
+  "ELDORADO LUXE",
+  "THE LUNGU TAILOR",
+  "TRADITION, TAILORED TO EXCELLENCE",
+  "ORDER VIA WHATSAPP",
+  "BOOK A CONSULTATION",
+];
 
 const collections = [
   { name: "Agbada", folder: "agbada", description: "Statement pieces with regal presence." },
@@ -54,6 +82,46 @@ function App() {
   const [searchTerm, setSearchTerm] = useState("");
   const [notice, setNotice] = useState("");
   const productCarouselRef = useRef(null);
+  const customer = useCustomer();
+  const [heroSlides, setHeroSlides] = useState([HERO_SLIDES[0]]);
+  const [heroIndex, setHeroIndex] = useState(0);
+  const { founder, collectionInfo } = useSiteContent();
+
+  // Work out which hero pictures actually exist
+  useEffect(() => {
+    let cancelled = false;
+
+    Promise.all(
+      HERO_SLIDES.map(
+        (src) =>
+          new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => resolve(src);
+            img.onerror = () => resolve(null);
+            img.src = src;
+          })
+      )
+    ).then((found) => {
+      if (cancelled) return;
+      const ok = found.filter(Boolean);
+      if (ok.length > 0) setHeroSlides(ok);
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  // Move to the next picture every few seconds
+  useEffect(() => {
+    if (heroSlides.length < 2) return undefined;
+
+    const timer = setInterval(() => {
+      setHeroIndex((current) => (current + 1) % heroSlides.length);
+    }, HERO_SECONDS * 1000);
+
+    return () => clearInterval(timer);
+  }, [heroSlides]);
 
   useEffect(() => {
     localStorage.setItem("eldorado-cart", JSON.stringify(cart));
@@ -340,11 +408,24 @@ function App() {
   return (
     <div className="store">
 
-      {/* ANNOUNCEMENT BAR */}
-      <div className="announcement">
-        <span>ELDORADO LUXE</span>
-        <span className="announcement-divider">|</span>
-        <span>THE LUNGU TAILOR — TRADITION, TAILORED TO EXCELLENCE</span>
+      {/* ANNOUNCEMENT BAR (scrolling ticker) */}
+      <div className="announcement" aria-label="Announcements">
+        <div className="announcement-track">
+          {[0, 1, 2, 3].map((copy) => (
+            <div
+              className="announcement-group"
+              key={copy}
+              aria-hidden={copy > 0 ? "true" : undefined}
+            >
+              {ANNOUNCEMENTS.map((text) => (
+                <span className="announcement-item" key={text}>
+                  {text}
+                  <span className="announcement-star">✳</span>
+                </span>
+              ))}
+            </div>
+          ))}
+        </div>
       </div>
 
       {/* HEADER */}
@@ -445,6 +526,13 @@ function App() {
           ))}
 
           <a href="#about" onClick={() => setMenuOpen(false)}>Our Story</a>
+          <a href="#founder" onClick={() => setMenuOpen(false)}>Meet the Founder</a>
+          <a href="#gallery" onClick={() => setMenuOpen(false)}>Gallery</a>
+          <a href="#reviews" onClick={() => setMenuOpen(false)}>Reviews</a>
+          <a href="#consultation" onClick={() => setMenuOpen(false)}>Book a Consultation</a>
+          <a href="#account" onClick={() => setMenuOpen(false)}>
+            {customer.user ? "My Account" : "Create Account"}
+          </a>
           <a href="#contact" onClick={() => setMenuOpen(false)}>Contact</a>
         </nav>
 
@@ -641,7 +729,31 @@ function App() {
         {/* HERO SECTION */}
         <section className="hero" id="home">
 
+          <div className="hero-slides" aria-hidden="true">
+            {heroSlides.map((src, index) => (
+              <div
+                key={src}
+                className={`hero-slide ${index === heroIndex ? "active" : ""}`}
+                style={{ backgroundImage: `url("${src}")` }}
+              />
+            ))}
+          </div>
+
           <div className="hero-shade" />
+
+          {heroSlides.length > 1 && (
+            <div className="hero-dots">
+              {heroSlides.map((src, index) => (
+                <button
+                  type="button"
+                  key={src}
+                  className={index === heroIndex ? "active" : ""}
+                  aria-label={`Show picture ${index + 1}`}
+                  onClick={() => setHeroIndex(index)}
+                />
+              ))}
+            </div>
+          )}
 
           <div className="hero-content">
             <p className="eyebrow">THE MODERN GENTLEMAN</p>
@@ -655,6 +767,15 @@ function App() {
               Discover Nigerian traditional menswear crafted for presence,
               confidence and distinction.
             </p>
+
+            <div className="hero-actions">
+              <a className="hero-button hero-button-solid" href="#shop">
+                EXPLORE MEN'S COLLECTION
+              </a>
+              <a className="hero-button hero-button-line" href="#consultation">
+                BOOK A CONSULTATION
+              </a>
+            </div>
           </div>
 
           <span className="hero-caption">
@@ -974,6 +1095,14 @@ function App() {
           </section>
         )}
 
+        {/* COLLECTION DESCRIPTIONS AND COLOURS */}
+        <CollectionStories
+          collections={collections}
+          collectionInfo={collectionInfo}
+          products={products}
+          onExplore={chooseCollection}
+        />
+
         {/* OUR STORY */}
         <section className="story-section" id="about">
 
@@ -997,6 +1126,27 @@ function App() {
           </div>
 
         </section>
+
+        {/* MEET THE FOUNDER */}
+        <FounderSection founder={founder} />
+
+        {/* GALLERY: PHOTOS AND VIDEOS BY THE OWNER */}
+        <GallerySection />
+
+        {/* CUSTOMER REVIEWS */}
+        <ReviewsSection
+          customer={customer}
+          pieceOptions={collections.map((collection) => collection.name)}
+        />
+
+        {/* CONSULTATION */}
+        <ConsultationSection
+          whatsappNumber={WHATSAPP_NUMBER}
+          customer={customer}
+        />
+
+        {/* CUSTOMER ACCOUNT */}
+        <AccountSection customer={customer} />
 
         {/* CONTACT */}
         <section className="contact-band" id="contact">

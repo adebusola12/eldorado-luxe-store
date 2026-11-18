@@ -1,0 +1,344 @@
+/* =========================================
+   ELDORADO LUXE — ADMIN: SITE CONTENT, GALLERY,
+   CONSULTATIONS AND REVIEWS
+   (import this after AdminDashboardUpdates.css)
+========================================= */
+
+.admin-subheading {
+  margin: 0 0 22px;
+  color: #20231f;
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 21px;
+  font-weight: 500;
+}
+
+.admin-section-gap {
+  margin-top: 45px;
+  padding-top: 35px;
+  border-top: 1px solid #eeeae1;
+}
+
+/* ---------- upload preview ---------- */
+
+.admin-media-preview {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+
+  padding: 16px;
+
+  border: 1px dashed #c9b68e;
+  background: #faf9f6;
+}
+
+.admin-media-preview img,
+.admin-media-preview video {
+  display: block;
+  width: 120px;
+  height: 150px;
+  flex-shrink: 0;
+
+  object-fit: cover;
+  background: #eeeae0;
+}
+
+.admin-media-preview > span {
+  display: grid;
+  place-items: center;
+
+  width: 120px;
+  height: 150px;
+  flex-shrink: 0;
+
+  background: #eeeae0;
+  color: #898679;
+
+  font-size: 11px;
+  text-align: center;
+}
+
+.admin-media-preview input[type="file"] {
+  min-width: 0;
+  max-width: 100%;
+  color: #77766e;
+  font-family: inherit;
+  font-size: 12px;
+}
+
+.admin-media-preview input[type="file"]::file-selector-button {
+  min-height: 40px;
+  padding: 0 17px;
+  margin-right: 12px;
+
+  border: 1px solid #b49a67;
+  background: #20231f;
+  color: #d5bd8b;
+
+  font-family: inherit;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+/* ---------- collection editor ---------- */
+
+.admin-collection-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 20px;
+}
+
+.admin-collection-card {
+  min-width: 0;
+  padding: 20px;
+
+  border: 1px solid #ebe8df;
+  background: #fbfaf7;
+}
+
+.admin-collection-card h4 {
+  margin: 0 0 14px;
+  color: #20231f;
+  font-family: "Playfair Display", Georgia, serif;
+  font-size: 19px;
+  font-weight: 500;
+}
+
+.admin-collection-card .admin-field textarea {
+  min-height: 80px;
+}
+
+.admin-mini-label {
+  display: block;
+  margin: 16px 0 10px;
+  color: #a58a58;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+}
+
+.admin-color-row {
+  display: grid;
+  grid-template-columns: 46px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.admin-color-row input[type="color"] {
+  width: 46px;
+  height: 42px;
+  padding: 3px;
+
+  border: 1px solid #dedbd2;
+  background: #ffffff;
+  cursor: pointer;
+}
+
+.admin-color-row input[type="text"] {
+  min-width: 0;
+  min-height: 42px;
+  padding: 0 12px;
+  box-sizing: border-box;
+
+  border: 1px solid #dedbd2;
+  background: #ffffff;
+  color: #20231f;
+
+  font-family: inherit;
+  font-size: 14px;
+}
+
+.admin-color-row .inventory-delete {
+  flex: none;
+  padding: 0 12px;
+}
+
+.admin-add-color {
+  flex: none;
+  margin-top: 6px;
+  padding: 0 16px;
+}
+
+/* ---------- gallery list ---------- */
+
+.admin-gallery-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  padding-top: 28px;
+}
+
+.admin-gallery-item {
+  min-width: 0;
+
+  display: flex;
+  flex-direction: column;
+
+  border: 1px solid #ebe8df;
+  background: #fbfaf7;
+}
+
+.admin-gallery-media {
+  position: relative;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  background: #1c1d1a;
+}
+
+.admin-gallery-media img,
+.admin-gallery-media video {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.admin-gallery-body {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  padding: 12px;
+}
+
+.admin-gallery-body p {
+  margin: 0 0 12px;
+  color: #55564c;
+  font-size: 13px;
+  line-height: 1.5;
+  overflow-wrap: anywhere;
+}
+
+.admin-gallery-body .inventory-actions {
+  margin-top: auto;
+  padding-top: 12px;
+}
+
+/* ---------- consultations + reviews lists ---------- */
+
+.admin-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding-top: 26px;
+}
+
+.admin-list-item {
+  padding: 18px 20px;
+
+  border: 1px solid #ebe8df;
+  border-left: 3px solid #b49a67;
+  background: #fbfaf7;
+}
+
+.admin-list-item.done {
+  border-left-color: #cfcbc0;
+  opacity: 0.75;
+}
+
+.admin-list-top {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.admin-list-top strong {
+  color: #20231f;
+  font-size: 15px;
+}
+
+.admin-list-date {
+  color: #898679;
+  font-size: 12px;
+}
+
+.admin-list-stars {
+  color: #c79a43;
+  font-size: 15px;
+}
+
+.admin-list-stars span {
+  color: #d9d4c6;
+}
+
+.admin-list-line {
+  margin: 4px 0;
+  color: #6d6e65;
+  font-size: 13px;
+  overflow-wrap: anywhere;
+}
+
+.admin-list-line a {
+  color: #927849;
+  text-decoration: underline;
+}
+
+.admin-list-notes {
+  margin: 10px 0 0;
+  color: #3d3e37;
+  font-size: 14px;
+  line-height: 1.7;
+  overflow-wrap: anywhere;
+}
+
+.admin-list-actions {
+  margin-top: 14px;
+}
+
+.admin-list-actions .inventory-toggle,
+.admin-list-actions .inventory-delete {
+  flex: 0 1 auto;
+  padding: 0 16px;
+}
+
+.admin-link-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  text-decoration: none;
+  box-sizing: border-box;
+}
+
+/* ---------- tablet + mobile ---------- */
+
+@media (max-width: 1100px) {
+  .admin-gallery-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .admin-collection-list {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .admin-gallery-grid {
+    gap: 10px;
+  }
+
+  .admin-media-preview {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .admin-media-preview img,
+  .admin-media-preview video,
+  .admin-media-preview > span {
+    width: 100%;
+    height: 200px;
+  }
+
+  .admin-list-actions {
+    flex-wrap: wrap;
+  }
+
+  .admin-list-actions .inventory-toggle,
+  .admin-list-actions .inventory-delete {
+    min-height: 40px;
+    font-size: 12px;
+  }
+}

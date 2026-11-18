@@ -2,8 +2,22 @@ import { useEffect, useRef, useState } from "react";
 import { supabase } from "./supabaseClient";
 import "./AdminDashboard.css";
 import "./AdminDashboardUpdates.css";
+import "./AdminNewSections.css";
+import AdminSiteContent from "./AdminSiteContent";
+import AdminGallery from "./AdminGallery";
+import AdminConsultations from "./AdminConsultations";
+import AdminReviews from "./AdminReviews";
 
 const CATEGORIES = ["Senator Wear", "Agbada", "Kaftan", "Two-Piece", "Dansiki"];
+
+// Used by the "Site content" editor (names must match the products' categories)
+const COLLECTION_LIST = [
+  { name: "Agbada", description: "Statement pieces with regal presence." },
+  { name: "Senator Wear", description: "Sharp, refined traditional tailoring." },
+  { name: "Kaftan", description: "Effortless elegance for every occasion." },
+  { name: "Two-Piece", description: "Coordinated looks with a modern edge." },
+  { name: "Dansiki", description: "Heritage-inspired style with character." },
+];
 const INVENTORY_PER_PAGE = 6;
 
 async function readJsonResponse(response, serviceName) {
@@ -370,6 +384,26 @@ function AdminDashboard() {
               <span>Product inventory</span>
             </a>
 
+            <a href="#site-content" onClick={() => setIsMobileMenuOpen(false)}>
+              <span className="mobile-nav-icon">✎</span>
+              <span>Site content</span>
+            </a>
+
+            <a href="#gallery-admin" onClick={() => setIsMobileMenuOpen(false)}>
+              <span className="mobile-nav-icon">▣</span>
+              <span>Gallery</span>
+            </a>
+
+            <a href="#consultations" onClick={() => setIsMobileMenuOpen(false)}>
+              <span className="mobile-nav-icon">✉</span>
+              <span>Consultations</span>
+            </a>
+
+            <a href="#reviews-admin" onClick={() => setIsMobileMenuOpen(false)}>
+              <span className="mobile-nav-icon">★</span>
+              <span>Reviews</span>
+            </a>
+
             <button type="button" onClick={logout}>
               <span className="mobile-nav-icon">↪</span>
               <span>Logout</span>
@@ -409,6 +443,26 @@ function AdminDashboard() {
           <a href="#inventory" className="admin-nav-link">
             <span className="nav-icon">▤</span>
             Product inventory
+          </a>
+
+          <a href="#site-content" className="admin-nav-link">
+            <span className="nav-icon">✎</span>
+            Site content
+          </a>
+
+          <a href="#gallery-admin" className="admin-nav-link">
+            <span className="nav-icon">▣</span>
+            Gallery
+          </a>
+
+          <a href="#consultations" className="admin-nav-link">
+            <span className="nav-icon">✉</span>
+            Consultations
+          </a>
+
+          <a href="#reviews-admin" className="admin-nav-link">
+            <span className="nav-icon">★</span>
+            Reviews
           </a>
         </nav>
 
@@ -824,6 +878,12 @@ function AdminDashboard() {
               </nav>
             )}
           </section>
+
+          {/* WEBSITE CONTENT, GALLERY, CONSULTATIONS AND REVIEWS */}
+          <AdminSiteContent collections={COLLECTION_LIST} />
+          <AdminGallery />
+          <AdminConsultations />
+          <AdminReviews />
 
           <footer className="admin-footer">
             <span>ELDORADO LUXE</span>
