@@ -1,14 +1,14 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import "./App.css";
 import "./StoreUpdates.css";
 import { supabase } from "./supabaseClient";
 import AdminLogin from "./AdminLogin";
 import AdminDashboard from "./AdminDashboard";
 import "./NewSections.css";
+import "./Pages.css";
 import { useCustomer } from "./useCustomer";
 import { useSiteContent } from "./siteContent";
 import FounderSection from "./FounderSection";
-import CollectionStories from "./CollectionStories";
 import GallerySection from "./GallerySection";
 import ReviewsSection from "./ReviewsSection";
 import ConsultationSection from "./ConsultationSection";
@@ -25,8 +25,8 @@ const PRODUCTS_PER_PAGE = 6;
 // A picture that is missing is simply skipped, so the site never breaks.
 const HERO_SLIDES = [
   "/images/eldorado-hero.png",
-  "/images/hero-senator.jpeg",
-  "/images/hero-two-piece.jpeg",
+  "/images/hero-senator.jpg",
+  "/images/hero-two-piece.jpg",
 ];
 const HERO_SECONDS = 6;
 
@@ -59,6 +59,54 @@ function getSavedCart() {
   }
 }
 
+// Page addresses look like  #/story  or  #/collection/Agbada
+const PAGE_ROUTES = [
+  "shop",
+  "collection",
+  "story",
+  "founder",
+  "gallery",
+  "reviews",
+  "consultation",
+  "account",
+];
+
+function readRoute() {
+  const raw = window.location.hash || "";
+
+  if (!raw.startsWith("#/")) {
+    return { page: "home", anchor: raw.slice(1), arg: "" };
+  }
+
+  const [page, ...rest] = raw.slice(2).split("/");
+  let arg = rest.join("/");
+
+  try {
+    arg = decodeURIComponent(arg);
+  } catch {
+    // keep the text as it is
+  }
+
+  return {
+    page: PAGE_ROUTES.includes(page) ? page : "home",
+    anchor: "",
+    arg,
+  };
+}
+
+function goTo(path) {
+  window.location.hash = path;
+}
+
+function scrollToId(id) {
+  setTimeout(() => {
+    document.getElementById(id)?.scrollIntoView({
+      behavior: "smooth",
+      block: "start",
+    });
+  }, 100);
+}
+
 // Scrolls to the product area (small delay so open drawers can finish closing first)
 function scrollToProducts() {
   setTimeout(() => {
@@ -70,18 +118,16 @@ function scrollToProducts() {
 }
 
 function App() {
-  const [selectedCategory, setSelectedCategory] = useState("All");
+  const [route, setRoute] = useState(readRoute);
   const [currentPage, setCurrentPage] = useState(1);
   const [products, setProducts] = useState([]);
   const [productsLoading, setProductsLoading] = useState(true);
   const [cart, setCart] = useState(getSavedCart);
-  const [collectionCartVisible, setCollectionCartVisible] = useState(false);
   const [cartOpen, setCartOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [notice, setNotice] = useState("");
-  const productCarouselRef = useRef(null);
   const customer = useCustomer();
   const [heroSlides, setHeroSlides] = useState([HERO_SLIDES[0]]);
   const [heroIndex, setHeroIndex] = useState(0);
@@ -123,6 +169,30 @@ function App() {
     return () => clearInterval(timer);
   }, [heroSlides]);
 
+  // Follow the page address
+  useEffect(() => {
+    const onChange = () => setRoute(readRoute());
+    window.addEventListener("hashchange", onChange);
+    return () => window.removeEventListener("hashchange", onChange);
+  }, []);
+
+  // Every time the page changes: close panels, then go to the top
+  // (or to the part of the home page that was asked for)
+  useEffect(() => {
+    setMenuOpen(false);
+    setSearchOpen(false);
+    setCartOpen(false);
+    setCurrentPage(1);
+
+    if (route.page !== "shop") setSearchTerm("");
+
+    if (route.anchor && route.anchor !== "home") {
+      scrollToId(route.anchor);
+    } else {
+      window.scrollTo({ top: 0, behavior: "instant" });
+    }
+  }, [route]);
+
   useEffect(() => {
     localStorage.setItem("eldorado-cart", JSON.stringify(cart));
   }, [cart]);
@@ -141,7 +211,7 @@ function App() {
   // Always go back to page 1 when the collection or search changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [selectedCategory, searchTerm]);
+  }, [searchTerm]);
 
   useEffect(() => {
     async function loadProducts() {
@@ -176,13 +246,21 @@ function App() {
   const cartCount = cart.reduce((sum, item) => sum + item.quantity, 0);
   const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
+  // The collection being viewed ("All" on every other page)
+  const selectedCategory = route.page === "collection" ? route.arg : "All";
+  const collectionDetails = collections.find(
+    (collection) => collection.name === selectedCategory
+  );
+
+  const activeSearch = route.page === "shop" ? searchTerm : "";
+
   const visibleProducts = useMemo(() => {
     let result =
       selectedCategory === "All"
         ? products
         : products.filter((product) => product.category === selectedCategory);
 
-    const query = searchTerm.trim().toLowerCase();
+    const query = activeSearch.trim().toLowerCase();
 
     if (query) {
       result = result.filter((product) =>
@@ -191,60 +269,18 @@ function App() {
     }
 
     return result;
-  }, [selectedCategory, searchTerm, products]);
+  }, [selectedCategory, activeSearch, products]);
 
-  // PAGINATION (only used when viewing all outfits / search results)
-  const isPaginated = selectedCategory === "All";
+  // PAGINATION (6 outfits per page)
   const totalPages = Math.max(1, Math.ceil(visibleProducts.length / PRODUCTS_PER_PAGE));
   const safePage = Math.min(currentPage, totalPages);
 
-  const displayedProducts = isPaginated
-    ? visibleProducts.slice(
-        (safePage - 1) * PRODUCTS_PER_PAGE,
-        safePage * PRODUCTS_PER_PAGE
-      )
-    : visibleProducts;
+  const displayedProducts = visibleProducts.slice(
+    (safePage - 1) * PRODUCTS_PER_PAGE,
+    safePage * PRODUCTS_PER_PAGE
+  );
 
-  const isSearching = searchTerm.trim() !== "";
-
-  // AUTOMATIC PRODUCT CAROUSEL (inside a single collection)
-  useEffect(() => {
-    if (selectedCategory === "All" || visibleProducts.length <= 1) {
-      return;
-    }
-
-    const carousel = productCarouselRef.current;
-
-    if (!carousel) return;
-
-    const slideInterval = setInterval(() => {
-      const firstCard = carousel.querySelector(".product-card");
-
-      if (!firstCard) return;
-
-      const cardWidth = firstCard.getBoundingClientRect().width;
-      const styles = window.getComputedStyle(carousel);
-      const gap = parseFloat(styles.columnGap) || 0;
-
-      const maxScroll = carousel.scrollWidth - carousel.clientWidth;
-
-      if (maxScroll <= 5) return;
-
-      if (carousel.scrollLeft >= maxScroll - 5) {
-        carousel.scrollTo({
-          left: 0,
-          behavior: "smooth",
-        });
-      } else {
-        carousel.scrollTo({
-          left: Math.min(carousel.scrollLeft + cardWidth + gap, maxScroll),
-          behavior: "smooth",
-        });
-      }
-    }, 3000);
-
-    return () => clearInterval(slideInterval);
-  }, [selectedCategory, visibleProducts.length]);
+  const isSearching = activeSearch.trim() !== "";
 
   function addToCart(product) {
     setCart((current) => {
@@ -262,7 +298,6 @@ function App() {
     });
 
     setNotice(`${product.name} added to your bag.`);
-    setCollectionCartVisible(true);
   }
 
   function changeQuantity(productId, amount) {
@@ -281,22 +316,24 @@ function App() {
     setCart((current) => current.filter((item) => item.id !== productId));
   }
 
-  // Opens one collection (e.g. Agbada) and jumps to its outfits
+  // Opens the page of one collection (e.g. Agbada)
   function chooseCollection(category) {
-    setSelectedCategory(category);
-    setSearchTerm("");
-    setCurrentPage(1);
     setMenuOpen(false);
-    scrollToProducts();
+    setSearchTerm("");
+    goTo(`/collection/${encodeURIComponent(category)}`);
   }
 
-  // Shows every outfit, starting from page 1
+  // Opens the page with every outfit
   function showAllProducts() {
-    setSelectedCategory("All");
-    setSearchTerm("");
-    setCurrentPage(1);
     setMenuOpen(false);
-    scrollToProducts();
+    setSearchTerm("");
+
+    if (route.page === "shop") {
+      setCurrentPage(1);
+      scrollToProducts();
+    } else {
+      goTo("/shop");
+    }
   }
 
   function goToPage(page) {
@@ -304,7 +341,7 @@ function App() {
     scrollToProducts();
   }
 
-  // Search: typing "agbada" opens the Agbada collection,
+  // Search: typing "agbada" opens the Agbada page,
   // anything else (e.g. "white") searches across all outfits.
   function submitSearch(event) {
     event.preventDefault();
@@ -318,16 +355,20 @@ function App() {
           )
         : null;
 
+    setSearchOpen(false);
+
     if (matchedCollection) {
-      setSelectedCategory(matchedCollection.name);
       setSearchTerm("");
-    } else {
-      setSelectedCategory("All");
+      goTo(`/collection/${encodeURIComponent(matchedCollection.name)}`);
+      return;
     }
 
-    setCurrentPage(1);
-    setSearchOpen(false);
-    scrollToProducts();
+    if (route.page === "shop") {
+      setCurrentPage(1);
+      scrollToProducts();
+    } else {
+      goTo("/shop");
+    }
   }
 
   function checkoutOnWhatsApp() {
@@ -404,6 +445,113 @@ function App() {
 
     return adminUser ? <AdminDashboard /> : <AdminLogin />;
   }
+
+  // Outfit cards + page numbers (used by the shop page and each collection page)
+  const productListing = (
+    <>
+      <div className="product-grid">
+        {displayedProducts.map((product) => (
+          <article className="product-card" key={product.id}>
+
+            <div className="product-image">
+
+              <img
+                src={product.image}
+                alt={product.name}
+                loading="lazy"
+              />
+
+              {product.badge && (
+                <span className="product-badge">
+                  {product.badge}
+                </span>
+              )}
+
+              <button
+                className="quick-add"
+                onClick={() => addToCart(product)}
+              >
+                ADD TO BAG <span>+</span>
+              </button>
+
+            </div>
+
+            <div className="product-details">
+
+              <div>
+                <p className="product-category">{product.category}</p>
+                <h3>{product.name}</h3>
+              </div>
+
+              <p className="product-price">
+                {formatPrice(product.price)}
+              </p>
+
+            </div>
+
+            <button
+              type="button"
+              className="add-to-bag-button"
+              onClick={() => addToCart(product)}
+            >
+              ADD TO BAG
+            </button>
+
+          </article>
+        ))}
+
+        {productsLoading ? (
+          <p className="no-results">Loading our collection...</p>
+        ) : visibleProducts.length === 0 ? (
+          <p className="no-results">
+            No outfits found. Try another search.
+          </p>
+        ) : null}
+
+      </div>
+
+      {totalPages > 1 && (
+        <nav className="pagination" aria-label="Product pages">
+
+          <button
+            type="button"
+            className="page-arrow"
+            disabled={safePage === 1}
+            onClick={() => goToPage(safePage - 1)}
+            aria-label="Previous page"
+          >
+            ←
+          </button>
+
+          {Array.from({ length: totalPages }, (_, index) => index + 1).map(
+            (page) => (
+              <button
+                key={page}
+                type="button"
+                className={page === safePage ? "page-number active" : "page-number"}
+                onClick={() => goToPage(page)}
+                aria-label={`Page ${page}`}
+                aria-current={page === safePage ? "page" : undefined}
+              >
+                {page}
+              </button>
+            )
+          )}
+
+          <button
+            type="button"
+            className="page-arrow"
+            disabled={safePage === totalPages}
+            onClick={() => goToPage(safePage + 1)}
+            aria-label="Next page"
+          >
+            →
+          </button>
+
+        </nav>
+      )}
+    </>
+  );
 
   return (
     <div className="store">
@@ -525,15 +673,26 @@ function App() {
             </button>
           ))}
 
-          <a href="#about" onClick={() => setMenuOpen(false)}>Our Story</a>
-          <a href="#founder" onClick={() => setMenuOpen(false)}>Meet the Founder</a>
-          <a href="#gallery" onClick={() => setMenuOpen(false)}>Gallery</a>
-          <a href="#reviews" onClick={() => setMenuOpen(false)}>Reviews</a>
-          <a href="#consultation" onClick={() => setMenuOpen(false)}>Book a Consultation</a>
-          <a href="#account" onClick={() => setMenuOpen(false)}>
+          <p>DISCOVER</p>
+
+          <a href="#/story" onClick={() => setMenuOpen(false)}>Our Story</a>
+          <a href="#/founder" onClick={() => setMenuOpen(false)}>Meet the Founder</a>
+          <a href="#/gallery" onClick={() => setMenuOpen(false)}>Gallery</a>
+          <a href="#/reviews" onClick={() => setMenuOpen(false)}>Reviews</a>
+          <a href="#/consultation" onClick={() => setMenuOpen(false)}>Book a Consultation</a>
+          <a href="#/account" onClick={() => setMenuOpen(false)}>
             {customer.user ? "My Account" : "Create Account"}
           </a>
-          <a href="#contact" onClick={() => setMenuOpen(false)}>Contact</a>
+          <a
+            href="#contact"
+            onClick={(event) => {
+              event.preventDefault();
+              setMenuOpen(false);
+              scrollToId("contact");
+            }}
+          >
+            Contact
+          </a>
         </nav>
 
         <div className="drawer-contact">
@@ -695,10 +854,7 @@ function App() {
             <input
               autoFocus={searchOpen}
               value={searchTerm}
-              onChange={(event) => {
-                setSearchTerm(event.target.value);
-                setSelectedCategory("All");
-              }}
+              onChange={(event) => setSearchTerm(event.target.value)}
               placeholder="Search outfits..."
             />
           </label>
@@ -726,6 +882,9 @@ function App() {
 
       <main>
 
+        {/* ---------- HOME ---------- */}
+        {route.page === "home" && (
+          <>
         {/* HERO SECTION */}
         <section className="hero" id="home">
 
@@ -772,7 +931,7 @@ function App() {
               <a className="hero-button hero-button-solid" href="#shop">
                 EXPLORE MEN'S COLLECTION
               </a>
-              <a className="hero-button hero-button-line" href="#consultation">
+              <a className="hero-button hero-button-line" href="#/consultation">
                 BOOK A CONSULTATION
               </a>
             </div>
@@ -793,316 +952,188 @@ function App() {
           <p>MADE FOR THE MODERN MAN</p>
         </section>
 
-        {/* COLLECTIONS AND PRODUCTS */}
-        <section className="shop-section" id="shop">
 
-          <div className="section-heading">
-            <p className="eyebrow">CURATED FOR YOU</p>
-            <h2>Explore the <em>collections.</em></h2>
-            <p>
-              Traditional Nigerian style, thoughtfully selected for every occasion.
-            </p>
-          </div>
+            {/* COLLECTIONS */}
+            <section className="shop-section" id="shop">
 
-          {/* COLLECTION IMAGE GRID */}
-          <div className="collection-grid" id="collections">
+              <div className="section-heading">
+                <p className="eyebrow">CURATED FOR YOU</p>
+                <h2>Explore the <em>collections.</em></h2>
+                <p>
+                  Traditional Nigerian style, thoughtfully selected for every occasion.
+                </p>
+              </div>
 
-            {collections.map((collection, index) => {
-              const firstProduct = products.find(
-                (product) => product.category === collection.name
-              );
+              <div className="collection-grid" id="collections">
 
-              return (
-                <button
-                  className="collection-tile"
-                  type="button"
-                  key={collection.name}
-                  onClick={() => chooseCollection(collection.name)}
-                >
-                  <img
-                    src={firstProduct?.image || "/images/eldorado-hero.png"}
-                    alt={`${collection.name} collection`}
-                    loading="lazy"
-                  />
+                {collections.map((collection, index) => {
+                  const firstProduct = products.find(
+                    (product) => product.category === collection.name
+                  );
 
-                  <span className="collection-tile-shade" />
+                  return (
+                    <button
+                      className="collection-tile"
+                      type="button"
+                      key={collection.name}
+                      onClick={() => chooseCollection(collection.name)}
+                    >
+                      <img
+                        src={firstProduct?.image || "/images/eldorado-hero.png"}
+                        alt={`${collection.name} collection`}
+                        loading="lazy"
+                      />
 
-                  <span className="collection-tile-text">
-                    <small>0{index + 1}</small>
-                    <strong>{collection.name}</strong>
-                    <em>EXPLORE →</em>
-                  </span>
+                      <span className="collection-tile-shade" />
+
+                      <span className="collection-tile-text">
+                        <small>0{index + 1}</small>
+                        <strong>{collection.name}</strong>
+                        <em>EXPLORE →</em>
+                      </span>
+                    </button>
+                  );
+                })}
+
+              </div>
+
+              <div className="view-all-wrap">
+                <button className="view-all-button" onClick={showAllProducts}>
+                  VIEW ALL PRODUCTS <span>→</span>
                 </button>
-              );
-            })}
+              </div>
 
-          </div>
+            </section>
+          </>
+        )}
 
-          {/* PRODUCT SECTION HEADING */}
-          <div className="section-heading product-heading" id="products">
-            <p className="eyebrow">THE ELDORADO EDIT</p>
+        {/* ---------- ALL OUTFITS ---------- */}
+        {route.page === "shop" && (
+          <section className="shop-section listing-page">
 
-            <h2>
-              {isSearching
-                ? `Results for “${searchTerm.trim()}”`
-                : selectedCategory === "All"
-                  ? "Discover your next signature."
-                  : selectedCategory}
-            </h2>
+            <div className="section-heading product-heading" id="products">
+              <p className="eyebrow">THE ELDORADO EDIT</p>
 
-            <p>
-              {isSearching
-                ? `${visibleProducts.length} outfit(s) found.`
-                : selectedCategory === "All"
-                  ? "Pieces chosen to make every entrance memorable."
-                  : collections.find((item) => item.name === selectedCategory)?.description}
-            </p>
+              <h2>
+                {isSearching
+                  ? `Results for “${searchTerm.trim()}”`
+                  : "Discover your next signature."}
+              </h2>
 
-            {isSearching && (
-              <button
-                type="button"
-                className="clear-search"
-                onClick={() => setSearchTerm("")}
-              >
-                CLEAR SEARCH ×
-              </button>
-            )}
-          </div>
-
-          {/* CATEGORY FILTERS */}
-          <div className="category-filters">
-
-            <button
-              className={selectedCategory === "All" ? "filter active" : "filter"}
-              onClick={() => {
-                setSelectedCategory("All");
-                setSearchTerm("");
-              }}
-            >
-              VIEW ALL
-            </button>
-
-            {collections.map((collection) => (
-              <button
-                key={collection.name}
-                className={
-                  selectedCategory === collection.name
-                    ? "filter active"
-                    : "filter"
-                }
-                onClick={() => {
-                  setSelectedCategory(collection.name);
-                  setSearchTerm("");
-                }}
-              >
-                {collection.name}
-              </button>
-            ))}
-
-          </div>
-
-          {/* PRODUCT GRID / COLLECTION CAROUSEL */}
-          <div
-            className={
-              isPaginated ? "product-grid" : "product-grid product-carousel"
-            }
-            ref={isPaginated ? null : productCarouselRef}
-          >
-            {displayedProducts.map((product) => (
-              <article className="product-card" key={product.id}>
-
-                <div className="product-image">
-
-                  <img
-                    src={product.image}
-                    alt={product.name}
-                    loading="lazy"
-                  />
-
-                  {product.badge && (
-                    <span className="product-badge">
-                      {product.badge}
-                    </span>
-                  )}
-
-                  <button
-                    className="quick-add"
-                    onClick={() => addToCart(product)}
-                  >
-                    ADD TO BAG <span>+</span>
-                  </button>
-
-                </div>
-
-                <div className="product-details">
-
-                  <div>
-                    <p className="product-category">{product.category}</p>
-                    <h3>{product.name}</h3>
-                  </div>
-
-                  <p className="product-price">
-                    {formatPrice(product.price)}
-                  </p>
-
-                </div>
-
-              </article>
-            ))}
-
-            {productsLoading ? (
-              <p className="no-results">Loading our collection...</p>
-            ) : visibleProducts.length === 0 ? (
-              <p className="no-results">
-                No outfits found. Try another search.
-              </p>
-            ) : null}
-
-          </div>
-
-          {/* PAGE NUMBERS (all outfits only) */}
-          {isPaginated && totalPages > 1 && (
-            <nav className="pagination" aria-label="Product pages">
-
-              <button
-                type="button"
-                className="page-arrow"
-                disabled={safePage === 1}
-                onClick={() => goToPage(safePage - 1)}
-                aria-label="Previous page"
-              >
-                ←
-              </button>
-
-              {Array.from({ length: totalPages }, (_, index) => index + 1).map(
-                (page) => (
-                  <button
-                    key={page}
-                    type="button"
-                    className={page === safePage ? "page-number active" : "page-number"}
-                    onClick={() => goToPage(page)}
-                    aria-label={`Page ${page}`}
-                    aria-current={page === safePage ? "page" : undefined}
-                  >
-                    {page}
-                  </button>
-                )
-              )}
-
-              <button
-                type="button"
-                className="page-arrow"
-                disabled={safePage === totalPages}
-                onClick={() => goToPage(safePage + 1)}
-                aria-label="Next page"
-              >
-                →
-              </button>
-
-            </nav>
-          )}
-
-          {/* VIEW ALL BUTTON */}
-          <div className="view-all-wrap">
-            <button
-              className="view-all-button"
-              onClick={showAllProducts}
-            >
-              VIEW ALL PRODUCTS <span>→</span>
-            </button>
-          </div>
-
-        </section>
-
-        {/* SHOPPING BAG SUMMARY BELOW COLLECTION */}
-        {cart.length > 0 && collectionCartVisible && (
-          <section className="collection-cart-section" id="collection-cart">
-            <button
-              type="button"
-              className="close-collection-cart"
-              onClick={() => setCollectionCartVisible(false)}
-              aria-label="Close shopping bag summary"
-            >
-              ×
-            </button>
-
-            <div className="collection-cart-heading">
-              <p className="eyebrow">YOUR SELECTION</p>
-              <h2>Your Shopping <em>Bag.</em></h2>
               <p>
-                Review your selected pieces before placing your order.
+                {isSearching
+                  ? `${visibleProducts.length} outfit(s) found.`
+                  : "Pieces chosen to make every entrance memorable."}
               </p>
+
+              {isSearching && (
+                <button
+                  type="button"
+                  className="clear-search"
+                  onClick={() => setSearchTerm("")}
+                >
+                  CLEAR SEARCH ×
+                </button>
+              )}
             </div>
 
-            <div className="collection-cart-items">
-              {cart.map((item) => (
-                <article className="collection-cart-item" key={item.id}>
+            <div className="category-filters">
+              <button className="filter active" onClick={showAllProducts}>
+                VIEW ALL
+              </button>
 
-                  <img src={item.image} alt={item.name} />
-
-                  <div className="collection-cart-details">
-                    <p>{item.category}</p>
-                    <h3>{item.name}</h3>
-                    <strong>{formatPrice(item.price)}</strong>
-
-                    <div className="collection-quantity">
-                      <button
-                        type="button"
-                        onClick={() => changeQuantity(item.id, -1)}
-                      >
-                        −
-                      </button>
-
-                      <span>{item.quantity}</span>
-
-                      <button
-                        type="button"
-                        onClick={() => changeQuantity(item.id, 1)}
-                      >
-                        +
-                      </button>
-
-                      <button
-                        type="button"
-                        className="collection-remove"
-                        onClick={() => removeFromCart(item.id)}
-                      >
-                        Remove
-                      </button>
-                    </div>
-                  </div>
-
-                </article>
+              {collections.map((collection) => (
+                <button
+                  key={collection.name}
+                  className="filter"
+                  onClick={() => chooseCollection(collection.name)}
+                >
+                  {collection.name}
+                </button>
               ))}
             </div>
 
-            <div className="collection-cart-bottom">
-              <div>
-                <span>Subtotal</span>
-                <h3>{formatPrice(cartTotal)}</h3>
-              </div>
-
-              <button
-                type="button"
-                className="whatsapp-checkout"
-                onClick={checkoutOnWhatsApp}
-              >
-                ORDER VIA WHATSAPP
-              </button>
-
-            </div>
+            {productListing}
 
           </section>
         )}
 
-        {/* COLLECTION DESCRIPTIONS AND COLOURS */}
-        <CollectionStories
-          collections={collections}
-          collectionInfo={collectionInfo}
-          products={products}
-          onExplore={chooseCollection}
-        />
+        {/* ---------- ONE COLLECTION ---------- */}
+        {route.page === "collection" && (
+          <section className="shop-section listing-page collection-page">
 
+            {!collectionDetails ? (
+              <div className="section-heading">
+                <h2>We couldn't find that collection.</h2>
+                <p>
+                  <a className="text-link" href="#/shop">SEE ALL OUTFITS →</a>
+                </p>
+              </div>
+            ) : (
+              <>
+                <a className="back-link" href="#shop">← All collections</a>
+
+                <div className="collection-intro">
+
+                  <div className="collection-intro-image">
+                    <img
+                      src={
+                        products.find((item) => item.category === collectionDetails.name)
+                          ?.image || "/images/eldorado-hero.png"
+                      }
+                      alt={`${collectionDetails.name} collection`}
+                    />
+                  </div>
+
+                  <div className="collection-intro-text">
+                    <p className="eyebrow">THE COLLECTION</p>
+                    <h2>{collectionDetails.name}</h2>
+
+                    <p className="collection-intro-description">
+                      {collectionInfo?.[collectionDetails.name]?.description ||
+                        collectionDetails.description}
+                    </p>
+
+                    {Array.isArray(collectionInfo?.[collectionDetails.name]?.colors) &&
+                      collectionInfo[collectionDetails.name].colors.length > 0 && (
+                        <div className="color-row">
+                          <span className="color-row-label">AVAILABLE COLOURS</span>
+
+                          <ul className="color-swatches">
+                            {collectionInfo[collectionDetails.name].colors.map(
+                              (color, index) => (
+                                <li key={`${color.name}-${index}`}>
+                                  <span
+                                    className="color-dot"
+                                    style={{ backgroundColor: color.hex || "#cccccc" }}
+                                    aria-hidden="true"
+                                  />
+                                  <span>{color.name}</span>
+                                </li>
+                              )
+                            )}
+                          </ul>
+                        </div>
+                      )}
+                  </div>
+
+                </div>
+
+                <div className="collection-products-heading" id="products">
+                  <h3>Outfits in {collectionDetails.name}</h3>
+                  <span>{visibleProducts.length} piece(s)</span>
+                </div>
+
+                {productListing}
+              </>
+            )}
+
+          </section>
+        )}
+
+        {/* ---------- SEPARATE PAGES ---------- */}
+        {route.page === "story" && (
+          <div className="inner-page">
         {/* OUR STORY */}
         <section className="story-section" id="about">
 
@@ -1120,33 +1151,51 @@ function App() {
               for the modern gentleman.
             </p>
 
-            <a href="#shop" className="text-link">
+            <a href="#/shop" className="text-link">
               DISCOVER THE COLLECTION →
             </a>
           </div>
 
         </section>
 
-        {/* MEET THE FOUNDER */}
-        <FounderSection founder={founder} />
+          </div>
+        )}
 
-        {/* GALLERY: PHOTOS AND VIDEOS BY THE OWNER */}
-        <GallerySection />
+        {route.page === "founder" && (
+          <div className="inner-page">
+            <FounderSection founder={founder} />
+          </div>
+        )}
 
-        {/* CUSTOMER REVIEWS */}
-        <ReviewsSection
-          customer={customer}
-          pieceOptions={collections.map((collection) => collection.name)}
-        />
+        {route.page === "gallery" && (
+          <div className="inner-page">
+            <GallerySection />
+          </div>
+        )}
 
-        {/* CONSULTATION */}
-        <ConsultationSection
-          whatsappNumber={WHATSAPP_NUMBER}
-          customer={customer}
-        />
+        {route.page === "reviews" && (
+          <div className="inner-page">
+            <ReviewsSection
+              customer={customer}
+              pieceOptions={collections.map((collection) => collection.name)}
+            />
+          </div>
+        )}
 
-        {/* CUSTOMER ACCOUNT */}
-        <AccountSection customer={customer} />
+        {route.page === "consultation" && (
+          <div className="inner-page">
+            <ConsultationSection
+              whatsappNumber={WHATSAPP_NUMBER}
+              customer={customer}
+            />
+          </div>
+        )}
+
+        {route.page === "account" && (
+          <div className="inner-page">
+            <AccountSection customer={customer} />
+          </div>
+        )}
 
         {/* CONTACT */}
         <section className="contact-band" id="contact">
@@ -1184,29 +1233,29 @@ function App() {
           <div>
             <h3>QUICK LINKS</h3>
             <a href="#home">Home</a>
+            <a href="#/shop">Shop All</a>
+            <a href="#/story">Our Story</a>
+            <a href="#/founder">Meet the Founder</a>
+            <a href="#/gallery">Gallery</a>
+            <a href="#/reviews">Reviews</a>
+            <a href="#/consultation">Book a Consultation</a>
             <a
-              href="#products"
+              href="#contact"
               onClick={(event) => {
                 event.preventDefault();
-                showAllProducts();
+                scrollToId("contact");
               }}
             >
-              Shop All
+              Contact
             </a>
-            <a href="#about">Our Story</a>
-            <a href="#contact">Contact</a>
           </div>
 
           <div>
             <h3>COLLECTIONS</h3>
             {collections.map((collection) => (
               <a
-                href="#products"
+                href={`#/collection/${encodeURIComponent(collection.name)}`}
                 key={collection.name}
-                onClick={(event) => {
-                  event.preventDefault();
-                  chooseCollection(collection.name);
-                }}
               >
                 {collection.name}
               </a>
