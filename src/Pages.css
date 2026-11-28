@@ -499,20 +499,35 @@
   bottom: 22px;
 }
 
+/* On phones the text stays on the left and the picture on the right too */
 @media (max-width: 900px) {
   .store .hero.hero-split {
-    grid-template-columns: minmax(0, 1fr);
+    grid-template-columns: minmax(0, 1.15fr) minmax(0, 0.85fr);
     min-height: 0;
   }
 
   .hero-media {
-    order: -1;
-    min-height: 0;
-    height: min(110vw, 520px);
+    min-height: 380px;
   }
 
   .hero-copy {
-    padding: 40px 22px 50px;
+    padding: 36px 14px 36px 18px;
+  }
+
+  .hero-copy .eyebrow {
+    margin-bottom: 12px;
+    font-size: 10px;
+    letter-spacing: 1px;
+  }
+
+  .store .hero-copy h1 {
+    font-size: clamp(30px, 8.6vw, 52px);
+  }
+
+  .store .hero-copy .hero-description {
+    margin-top: 14px;
+    font-size: 14px;
+    line-height: 1.6;
   }
 }
 
