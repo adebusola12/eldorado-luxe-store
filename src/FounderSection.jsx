@@ -39,10 +39,10 @@ function FounderSection({ founder }) {
           ))}
 
           <div className="founder-actions">
-            <a href="#consultation" className="founder-button">
+            <a href="#/consultation" className="founder-button">
               BOOK A CONSULTATION
             </a>
-            <a href="#collection-stories" className="text-link">
+            <a href="#shop" className="text-link">
               SEE THE COLLECTIONS →
             </a>
           </div>

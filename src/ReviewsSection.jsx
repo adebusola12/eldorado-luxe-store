@@ -162,7 +162,7 @@ function ReviewsSection({ customer, pieceOptions }) {
 
         {!customer.ready ? null : !customer.user ? (
           <p className="review-login-note">
-            Please <a href="#account">create an account or sign in</a> to leave
+            Please <a href="#/account">create an account or sign in</a> to leave
             a review.
           </p>
         ) : (

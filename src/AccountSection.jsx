@@ -187,10 +187,10 @@ function AccountSection({ customer }) {
               </p>
 
               <div className="account-actions">
-                <a className="dark-button whatsapp-link" href="#reviews">
+                <a className="dark-button whatsapp-link" href="#/reviews">
                   WRITE A REVIEW
                 </a>
-                <a className="view-all-button" href="#consultation">
+                <a className="view-all-button" href="#/consultation">
                   BOOK A CONSULTATION
                 </a>
               </div>

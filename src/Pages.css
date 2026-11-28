@@ -145,7 +145,7 @@
 }
 
 .store .collection-page {
-  max-width: 1000px;
+  max-width: 1080px;
   padding-top: 50px;
 }
 
@@ -212,19 +212,138 @@
 
 /* ---------- 4. SMALLER OUTFIT CARDS ---------- */
 
-.store .listing-page .product-grid:not(.product-carousel) {
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 38px 22px;
-  max-width: 880px;
+.store .listing-page .product-grid:not(.product-carousel),
+.store .home-listing .product-grid:not(.product-carousel),
+.store .product-grid {
+  display: grid !important;
+  grid-template-columns: repeat(4, minmax(0, 1fr)) !important;
+  gap: 34px 18px !important;
+  max-width: 1000px !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
 }
 
-.store .listing-page .product-image {
+.store .listing-page .product-image,
+.store .home-listing .product-image {
   aspect-ratio: 4 / 5;
 }
 
+/* Hover: the card lifts and the picture slides to show more of the outfit */
+.store .product-card {
+  transition: transform 0.35s ease;
+}
+
+.store .product-card:hover {
+  transform: translateY(-6px);
+}
+
+.store .product-image {
+  transition: box-shadow 0.35s ease;
+}
+
+.store .product-card:hover .product-image {
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.14);
+}
+
+.store .product-image img {
+  object-position: 50% 12%;
+  transform: scale(1);
+  transition: transform 0.6s ease, object-position 0.6s ease;
+}
+
+.store .product-card:hover .product-image img {
+  object-position: 50% 88%;
+  transform: scale(1.1);
+}
+
+/* Clicking an outfit opens its collection page */
+.product-link {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.store .product-details h3 a {
+  color: inherit;
+  text-decoration: none;
+}
+
+.store .product-details h3 a:hover {
+  text-decoration: underline;
+}
+
+/* Colours and sizes shown under each outfit on a collection page */
+.product-options {
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid var(--line);
+  font-size: 12px;
+  color: #55544e;
+}
+
+.product-option-line {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.product-option-label {
+  min-width: 48px;
+  color: var(--muted);
+  font-size: 11px;
+  letter-spacing: 0.4px;
+}
+
+.product-option-dots {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.product-option-dots i {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+}
+
+.size-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.size-chips li {
+  min-width: 42px;
+  padding: 8px 12px;
+  border: 1px solid var(--line);
+  background: #ffffff;
+  text-align: center;
+  font-size: 13px;
+}
+
 /* A plain button under each outfit works on phones too, so the hover bar goes */
-.store .quick-add {
+.store .listing-page .quick-add {
   display: none;
+}
+
+/* On the home page the outfit cards look as they did before (hover bar on computers) */
+.home-listing .add-to-bag-button {
+  display: none;
+}
+
+@media (hover: none) {
+  .home-listing .quick-add {
+    display: none;
+  }
+
+  .home-listing .add-to-bag-button {
+    display: block;
+  }
 }
 
 .add-to-bag-button {
@@ -280,9 +399,16 @@
     justify-content: center;
   }
 
-  .store .listing-page .product-grid:not(.product-carousel) {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-    gap: 28px 12px;
+  .store .listing-page .product-grid:not(.product-carousel),
+  .store .home-listing .product-grid:not(.product-carousel),
+  .store .product-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+    gap: 26px 10px !important;
+    max-width: 100% !important;
+  }
+
+  .collection-intro-text .size-chips {
+    justify-content: center;
   }
 
   .store .product-details h3 {
@@ -296,4 +422,715 @@
   .inner-page > section:first-child {
     padding-top: 48px;
   }
+}
+
+/* =========================================
+   HERO: details on the left, picture on the right
+========================================= */
+
+.store .hero.hero-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: stretch;
+  min-height: min(84vh, 700px);
+  background: var(--cream);
+  background-image: none;
+}
+
+.hero-copy {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 70px 6% 70px 9%;
+  color: var(--dark);
+}
+
+.hero-copy .eyebrow {
+  margin: 0 0 18px;
+  color: var(--gold);
+}
+
+.store .hero-copy h1 {
+  margin: 0;
+  color: var(--dark);
+  font-size: clamp(46px, 5.6vw, 82px);
+}
+
+.store .hero-copy h1 em {
+  color: var(--gold);
+  font-weight: 500;
+}
+
+.store .hero-copy .hero-description {
+  max-width: 440px;
+  margin: 24px 0 0;
+  color: #55544e;
+  font-size: 17px;
+  line-height: 1.75;
+}
+
+.store .hero-copy .hero-button-solid {
+  border-color: var(--dark);
+  background: var(--dark);
+  color: #ffffff;
+}
+
+.store .hero-copy .hero-button-line {
+  border-color: var(--dark);
+  background: transparent;
+  color: var(--dark);
+}
+
+.hero-media {
+  position: relative;
+  min-height: 460px;
+  overflow: hidden;
+  background: #d9d3c6;
+}
+
+.hero-media .hero-slide {
+  background-position: center 20%;
+}
+
+.hero-media .hero-dots {
+  right: auto;
+  left: 22px;
+  bottom: 22px;
+}
+
+@media (max-width: 900px) {
+  .store .hero.hero-split {
+    grid-template-columns: minmax(0, 1fr);
+    min-height: 0;
+  }
+
+  .hero-media {
+    order: -1;
+    min-height: 0;
+    height: min(110vw, 520px);
+  }
+
+  .hero-copy {
+    padding: 40px 22px 50px;
+  }
+}
+
+/* =========================================
+   FOOTER: bigger type, icons for social links
+========================================= */
+
+.store .footer {
+  padding: 64px 7% 28px;
+}
+
+.store .footer-tagline {
+  margin-bottom: 44px;
+  font-family: var(--font-display);
+  font-size: 24px;
+  font-weight: 500;
+  letter-spacing: 3px;
+}
+
+.store .footer-columns {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 40px;
+  padding: 44px 0 52px;
+}
+
+.store .footer-columns > div {
+  gap: 14px;
+}
+
+.store .footer-columns h3 {
+  margin: 0 0 8px;
+  font-family: var(--font-display);
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+
+.store .footer-columns a,
+.store .footer-columns span {
+  font-size: 16px;
+  line-height: 1.6;
+}
+
+.store .footer-bottom {
+  font-size: 14px;
+}
+
+.footer-social {
+  display: flex;
+  gap: 14px;
+}
+
+.store .footer-columns .footer-social a {
+  display: grid;
+  place-items: center;
+  width: 46px;
+  height: 46px;
+  border: 1px solid #5a5b54;
+  border-radius: 50%;
+  color: #d1d0c9;
+  transition: background 0.2s ease, border-color 0.2s ease, color 0.2s ease;
+}
+
+.store .footer-columns .footer-social a:hover {
+  border-color: #d5c09a;
+  background: #d5c09a;
+  color: var(--dark);
+}
+
+.footer-social svg {
+  width: 22px;
+  height: 22px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.7;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+.footer-social svg .dot,
+.footer-social svg .fill {
+  fill: currentColor;
+  stroke: none;
+}
+
+@media (max-width: 700px) {
+  .store .footer-columns {
+    grid-template-columns: minmax(0, 1fr);
+    gap: 34px;
+  }
+
+  .store .footer-tagline {
+    font-size: 20px;
+  }
+
+  .store .footer-bottom {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+}
+
+/* =========================================
+   COLLECTION PICTURE PLACEHOLDER
+   (shown when a collection has no outfit yet)
+========================================= */
+
+.collection-tile-empty {
+  position: absolute;
+  inset: 0;
+  display: block;
+  background: #d9d3c6;
+}
+
+.collection-intro-image {
+  position: relative;
+}
+
+/* =========================================
+   FOUNDER: photo pinned to the far left edge
+========================================= */
+
+.store .founder-section {
+  padding: 0;
+  background: #ffffff;
+}
+
+.store .founder-inner {
+  max-width: none;
+  margin: 0;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  align-items: stretch;
+  gap: 0;
+}
+
+.store .founder-photo {
+  max-width: none;
+  min-height: 520px;
+}
+
+.store .founder-photo img,
+.store .founder-monogram {
+  height: 100%;
+  min-height: 520px;
+  aspect-ratio: auto;
+}
+
+.store .founder-text {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: flex-start;
+  padding: 70px 9% 70px 7%;
+}
+
+@media (max-width: 900px) {
+  .store .founder-inner {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .store .founder-photo,
+  .store .founder-photo img,
+  .store .founder-monogram {
+    min-height: 0;
+  }
+
+  .store .founder-photo img,
+  .store .founder-monogram {
+    height: auto;
+    aspect-ratio: 4 / 5;
+    max-height: 520px;
+  }
+
+  .store .founder-text {
+    padding: 40px 22px 50px;
+  }
+}
+
+/* =========================================
+   ALL GOLD TEXT BECOMES BLACK
+   (rating stars stay gold)
+========================================= */
+
+.store .eyebrow,
+.store .hero-copy .eyebrow,
+.store .founder-title,
+.store .color-row-label,
+.store .drawer-nav p,
+.store .empty-bag-icon,
+.store .consult-points li::before {
+  color: var(--dark);
+}
+
+.store .hero-copy h1 em,
+.store .section-heading h2 em,
+.store .story-content h2 em,
+.store .consult-intro h2 em,
+.store .account-intro h2 em,
+.store .hero h1 em {
+  color: inherit;
+}
+
+.store .icon-button:hover,
+.store .drawer-nav a:hover,
+.store .drawer-nav button:hover,
+.store .story-explore:hover {
+  color: #000000;
+}
+
+.store .text-link,
+.store .story-explore {
+  border-bottom-color: var(--dark);
+}
+
+.store .founder-quote {
+  border-left-color: var(--dark);
+}
+
+.store .founder-button:hover,
+.store .dark-button:hover {
+  background: #000000;
+  border-color: #000000;
+}
+
+.store .contact-email,
+.store .contact-phone {
+  text-decoration-color: var(--dark);
+}
+
+/* =========================================
+   FOOTER: light grey, compact
+========================================= */
+
+.store .footer {
+  padding: 36px 7% 18px;
+  background: #d6d4cd;
+  color: var(--dark);
+}
+
+.store .footer-tagline {
+  margin-bottom: 0;
+  padding-bottom: 22px;
+  color: var(--dark);
+  font-size: 22px;
+  letter-spacing: 2.5px;
+}
+
+.store .footer-columns {
+  gap: 28px;
+  padding: 26px 0 28px;
+  border-top: 1px solid #b8b6ae;
+  border-bottom: 1px solid #b8b6ae;
+}
+
+.store .footer-columns > div {
+  gap: 8px;
+}
+
+.store .footer-columns h3 {
+  margin: 0 0 4px;
+  color: var(--dark);
+  font-size: 21px;
+}
+
+.store .footer-columns a,
+.store .footer-columns span {
+  color: #3b3a35;
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.store .footer-columns a:hover {
+  color: #000000;
+}
+
+/* the quick links sit in two neat columns instead of one tall list */
+.store .footer-columns > div:first-child {
+  display: grid;
+  grid-template-columns: repeat(2, max-content);
+  column-gap: 36px;
+  row-gap: 6px;
+  align-content: start;
+}
+
+.store .footer-columns > div:first-child h3 {
+  grid-column: 1 / -1;
+}
+
+.store .footer-bottom {
+  padding-top: 16px;
+  color: #55544e;
+  font-size: 13px;
+}
+
+.store .footer-columns .footer-social a {
+  width: 42px;
+  height: 42px;
+  border-color: #a9a79f;
+  color: var(--dark);
+}
+
+.store .footer-columns .footer-social a:hover {
+  border-color: var(--dark);
+  background: var(--dark);
+  color: #ffffff;
+}
+
+@media (max-width: 700px) {
+  .store .footer {
+    padding: 30px 6% 16px;
+  }
+
+  .store .footer-columns {
+    gap: 24px;
+    padding: 22px 0 24px;
+  }
+}
+
+.store .founder-monogram {
+  border-color: var(--dark);
+  outline-color: #ffffff;
+}
+
+.store .founder-monogram span {
+  color: #ffffff;
+}
+
+/* =========================================
+   FOUNDER PHOTO: narrower and taller
+========================================= */
+
+.store .founder-inner {
+  grid-template-columns: minmax(0, 0.7fr) minmax(0, 1.3fr);
+}
+
+.store .founder-photo {
+  min-height: 680px;
+}
+
+.store .founder-photo img,
+.store .founder-monogram {
+  min-height: 680px;
+}
+
+@media (max-width: 900px) {
+  .store .founder-inner {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .store .founder-photo,
+  .store .founder-photo img,
+  .store .founder-monogram {
+    min-height: 0;
+  }
+
+  .store .founder-photo img,
+  .store .founder-monogram {
+    height: auto;
+    aspect-ratio: 3 / 4;
+    max-height: 560px;
+  }
+}
+
+/* =========================================
+   VIEW ALL OUTFITS: pictures only
+========================================= */
+
+.product-card.outfit-only {
+  cursor: pointer;
+}
+
+.outfit-name {
+  margin: 10px 0 0;
+  font-family: var(--font-display);
+  font-size: 18px;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+
+a.view-all-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  text-decoration: none;
+}
+
+.collection-tile-empty {
+  display: grid;
+  place-items: center;
+  padding: 0 16px 60px;
+  color: #6b6a62;
+  font-size: 13px;
+  text-align: center;
+}
+
+/* =========================================
+   BIGGER, BOLDER TEXT: strip, founder story, footer
+========================================= */
+
+.store .intro-strip {
+  min-height: 96px;
+  gap: 14px 30px;
+}
+
+.store .intro-strip p {
+  color: var(--dark);
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: 2.4px;
+}
+
+@media (max-width: 700px) {
+  .store .intro-strip {
+    padding: 22px 16px;
+    gap: 10px 18px;
+  }
+
+  .store .intro-strip p {
+    font-size: 13px;
+    letter-spacing: 1.6px;
+  }
+}
+
+.store .founder-text h2 {
+  font-size: clamp(42px, 4.6vw, 64px);
+  font-weight: 600;
+}
+
+.store .founder-title {
+  color: var(--dark);
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+}
+
+.store .founder-quote {
+  color: var(--dark);
+  font-size: clamp(24px, 2.4vw, 32px);
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.store .founder-paragraph {
+  color: #20211e;
+  font-size: 19px;
+  font-weight: 500;
+  line-height: 1.85;
+}
+
+.store .founder-button {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.store .footer-tagline,
+.store .footer-columns h3 {
+  font-weight: 700;
+}
+
+.store .footer-columns a,
+.store .footer-columns span,
+.store .footer-bottom,
+.store .footer-bottom p,
+.store .footer-bottom span {
+  color: var(--dark);
+  font-weight: 600;
+}
+
+.store .footer-columns a {
+  font-size: 16px;
+}
+
+/* =========================================
+   BIGGER TEXT: story, gallery, reviews, consultation, account
+========================================= */
+
+.store .story-section h2,
+.store #gallery h2,
+.store #reviews h2,
+.store #consultation h2,
+.store #account h2 {
+  font-size: clamp(40px, 4.8vw, 62px);
+  font-weight: 600;
+  line-height: 1.1;
+}
+
+.store .story-section p:not(.eyebrow),
+.store #gallery p:not(.eyebrow),
+.store #reviews p:not(.eyebrow):not(.review-meta),
+.store #consultation p:not(.eyebrow),
+.store #account p:not(.eyebrow) {
+  color: var(--dark);
+  font-size: 18px;
+  font-weight: 500;
+  line-height: 1.8;
+}
+
+.store .story-section .eyebrow,
+.store #gallery .eyebrow,
+.store #reviews .eyebrow,
+.store #consultation .eyebrow,
+.store #account .eyebrow {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+/* story cards */
+.store .story-card-text h3 {
+  font-size: 34px;
+  font-weight: 600;
+}
+
+.store .story-card-text > p {
+  font-size: 17px;
+  font-weight: 500;
+}
+
+.store .story-explore {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* gallery */
+.store .gallery-item figcaption {
+  color: var(--dark);
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.store .lightbox p {
+  font-size: 17px;
+}
+
+/* reviews */
+.store .reviews-summary {
+  color: var(--dark);
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.store .reviews-summary strong {
+  font-size: 40px;
+}
+
+.store .review-text {
+  color: var(--dark);
+  font-size: 19px;
+  font-weight: 500;
+  line-height: 1.7;
+}
+
+.store .review-meta {
+  color: #3b3a35;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.store .review-form-wrap h3 {
+  font-size: 32px;
+  font-weight: 600;
+}
+
+.store .review-login-note {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* forms: consultation, account and review */
+.store .form-field label,
+.store .form-field > span {
+  color: var(--dark);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.store .form-field input,
+.store .form-field select,
+.store .form-field textarea {
+  color: var(--dark);
+  font-size: 17px;
+  font-weight: 500;
+}
+
+.store .form-message {
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.store .consult-points li {
+  color: var(--dark);
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.store .consult-done h3,
+.store .account-welcome h3,
+.store .account-form h3 {
+  font-size: 32px;
+  font-weight: 600;
+}
+
+.store .consult-done p,
+.store .account-welcome p {
+  font-size: 17px;
+}
+
+.store .account-tabs button {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.store #consultation button[type="submit"],
+.store #account button[type="submit"],
+.store #reviews button[type="submit"],
+.store .continue-link,
+.store .whatsapp-link {
+  font-size: 14px;
+  font-weight: 700;
 }

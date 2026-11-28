@@ -342,3 +342,97 @@
     font-size: 12px;
   }
 }
+
+/* The phone menu now has more links, so let it scroll if needed */
+@media (max-width: 700px) {
+  .mobile-navigation {
+    overflow-y: auto;
+  }
+
+  .mobile-navigation a,
+  .mobile-navigation button {
+    min-height: 54px;
+  }
+}
+
+
+/* ---------- tabs inside Site content ---------- */
+
+.admin-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 26px 0 30px;
+  padding-bottom: 18px;
+  border-bottom: 1px solid #eeeae1;
+}
+
+.admin-tab {
+  min-height: 42px;
+  padding: 0 20px;
+  border: 1px solid #dedbd2;
+  background: #ffffff;
+  color: #55564c;
+  font-family: inherit;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.admin-tab.active {
+  border-color: #20231f;
+  background: #20231f;
+  color: #d5bd8b;
+}
+
+.admin-hint {
+  margin: -8px 0 22px;
+  color: #77766e;
+  font-size: 14px;
+  line-height: 1.7;
+}
+
+
+/* ---------- collection cover picture ---------- */
+
+.admin-cover {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.admin-cover-preview {
+  display: grid;
+  place-items: center;
+  width: 96px;
+  height: 120px;
+  flex-shrink: 0;
+  overflow: hidden;
+  background: #eeeae0;
+  color: #898679;
+  font-size: 11px;
+  text-align: center;
+}
+
+.admin-cover-preview img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.admin-cover-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-cover-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 1 auto;
+  padding: 0 16px;
+  cursor: pointer;
+}

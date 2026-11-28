@@ -1,0 +1,371 @@
+@import url("https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700&family=Jost:wght@400;500;600;700&display=swap");
+
+/* =========================================
+   ELDORADO LUXE — ADMIN LOOK THAT MATCHES THE WEBSITE
+   (import this last in AdminDashboard.jsx)
+   Same fonts, black bold text, light grey menu like the footer.
+========================================= */
+
+.admin-layout {
+  --admin-ink: #20211e;
+  --admin-grey: #d6d4cd;
+  --admin-grey-line: #b8b6ae;
+  --admin-display: "Cormorant Garamond", "Times New Roman", serif;
+  --admin-body: "Jost", "Helvetica Neue", Arial, sans-serif;
+
+  font-family: var(--admin-body);
+  color: var(--admin-ink);
+}
+
+.admin-layout button,
+.admin-layout input,
+.admin-layout select,
+.admin-layout textarea {
+  font-family: var(--admin-body);
+}
+
+/* ---------- MENU (sidebar) ---------- */
+
+.admin-layout .admin-sidebar {
+  background: var(--admin-grey);
+  color: var(--admin-ink);
+  border-right: 1px solid var(--admin-grey-line);
+}
+
+.admin-layout .admin-sidebar-brand small,
+.admin-layout .admin-sidebar-brand span {
+  color: var(--admin-ink);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+
+.admin-layout .sidebar-divider {
+  background: var(--admin-grey-line);
+  border-color: var(--admin-grey-line);
+}
+
+.admin-layout .sidebar-label {
+  color: var(--admin-ink);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 2px;
+}
+
+.admin-layout .admin-nav-link {
+  min-height: 52px;
+  background: transparent;
+  border-left: 3px solid transparent;
+  color: var(--admin-ink);
+  font-size: 17px;
+  font-weight: 600;
+}
+
+.admin-layout .admin-nav-link:hover {
+  background: #ffffff;
+  color: #000000;
+}
+
+.admin-layout .admin-nav-link.active {
+  background: #ffffff;
+  border-left-color: var(--admin-ink);
+  color: #000000;
+  font-weight: 700;
+}
+
+.admin-layout .nav-icon {
+  color: var(--admin-ink);
+  font-size: 20px;
+  opacity: 0.85;
+}
+
+.admin-layout .sidebar-bottom {
+  border-color: var(--admin-grey-line);
+}
+
+.admin-layout .sidebar-brand-note strong {
+  color: var(--admin-ink);
+  font-family: var(--admin-display);
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.admin-layout .sidebar-brand-note span,
+.admin-layout .sidebar-brand-note small {
+  color: #3b3a35;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.admin-layout .sidebar-logout {
+  color: var(--admin-ink);
+  font-size: 15px;
+  font-weight: 700;
+  border-color: var(--admin-grey-line);
+}
+
+.admin-layout .sidebar-logout:hover {
+  background: #ffffff;
+}
+
+.admin-layout .sidebar-logout span {
+  color: var(--admin-ink);
+}
+
+/* ---------- HEADINGS ---------- */
+
+.admin-layout .admin-main h1,
+.admin-layout .admin-main h2,
+.admin-layout .admin-main h3,
+.admin-layout .admin-main h4 {
+  color: var(--admin-ink);
+  font-family: var(--admin-display);
+  font-weight: 700;
+}
+
+.admin-layout .admin-greeting h1 {
+  font-size: clamp(40px, 4.6vw, 58px);
+}
+
+.admin-layout .admin-panel h2 {
+  font-size: clamp(32px, 3.4vw, 42px);
+}
+
+.admin-layout .admin-subheading,
+.admin-layout .admin-collection-card h4 {
+  font-size: 27px;
+}
+
+.admin-layout .admin-eyebrow,
+.admin-layout .admin-mini-label,
+.admin-layout .stat-label,
+.admin-layout .color-row-label {
+  color: var(--admin-ink);
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 1.6px;
+}
+
+/* ---------- BODY TEXT: black, bold, bigger ---------- */
+
+.admin-layout .admin-main p,
+.admin-layout .admin-main li,
+.admin-layout .admin-main small {
+  color: var(--admin-ink);
+  font-size: 16px;
+  font-weight: 500;
+  line-height: 1.65;
+}
+
+.admin-layout .admin-main label,
+.admin-layout .admin-field label {
+  color: var(--admin-ink);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.4px;
+}
+
+.admin-layout .admin-main input,
+.admin-layout .admin-main select,
+.admin-layout .admin-main textarea {
+  color: var(--admin-ink);
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.admin-layout .admin-main ::placeholder {
+  color: #77766f;
+  font-weight: 400;
+}
+
+.admin-layout .stat-card strong,
+.admin-layout .stat-card b {
+  color: var(--admin-ink);
+  font-family: var(--admin-display);
+  font-weight: 700;
+}
+
+.admin-layout .admin-main .admin-hint {
+  color: var(--admin-ink);
+  font-size: 15px;
+}
+
+/* ---------- BUTTONS AND TABS ---------- */
+
+.admin-layout .inventory-toggle,
+.admin-layout .inventory-delete,
+.admin-layout .admin-tab:not(.active),
+.admin-layout .inventory-filters button:not(.active),
+.admin-layout .admin-page-number:not(.active),
+.admin-layout .admin-page-arrow {
+  color: var(--admin-ink);
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.admin-layout .inventory-delete {
+  color: #8a1f1f;
+}
+
+.admin-layout .admin-tab.active {
+  color: #ffffff;
+  font-weight: 700;
+}
+
+.admin-layout .admin-primary-button,
+.admin-layout .admin-add-button {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+.admin-layout .inventory-count {
+  color: var(--admin-ink);
+  font-size: 13px;
+  font-weight: 700;
+}
+
+/* ---------- PRODUCT INVENTORY: smaller pictures ---------- */
+
+.admin-layout .inventory-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 18px;
+}
+
+.admin-layout .inventory-image-wrap {
+  height: auto;
+  aspect-ratio: 1 / 1;
+}
+
+.admin-layout .inventory-image-wrap img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.admin-layout .inventory-category {
+  color: var(--admin-ink);
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 1.2px;
+}
+
+.admin-layout .inventory-product-details h3 {
+  font-size: 22px;
+  font-weight: 700;
+}
+
+.admin-layout .inventory-price {
+  color: var(--admin-ink);
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.admin-layout .product-status {
+  font-size: 10px;
+  font-weight: 700;
+}
+
+@media (max-width: 1250px) {
+  .admin-layout .inventory-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 700px) {
+  .admin-layout .inventory-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 12px;
+  }
+
+  .admin-layout .inventory-product-details h3 {
+    font-size: 18px;
+  }
+}
+
+/* ---------- PHONE HEADER AND MENU ---------- */
+
+.mobile-admin-header {
+  background: var(--admin-grey, #d6d4cd);
+  border-bottom-color: #b8b6ae;
+}
+
+.mobile-admin-brand span {
+  color: #20211e;
+  font-weight: 700;
+}
+
+.mobile-menu-button {
+  border-color: #20211e;
+  color: #20211e;
+}
+
+.mobile-navigation {
+  background: #d6d4cd;
+  border-left-color: #b8b6ae;
+}
+
+.mobile-navigation a,
+.mobile-navigation button {
+  border-bottom-color: #b8b6ae;
+  color: #20211e;
+  font-family: "Jost", "Helvetica Neue", Arial, sans-serif;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.mobile-nav-icon {
+  color: #20211e;
+}
+
+.mobile-navigation a:active,
+.mobile-navigation button:active {
+  background: #ffffff;
+  color: #000000;
+}
+
+/* ---------- finishing touches: no more gold ---------- */
+
+.admin-layout .admin-main .panel-heading p,
+.admin-layout .admin-main .admin-greeting p {
+  color: var(--admin-ink);
+  font-size: 17px;
+  font-weight: 500;
+}
+
+.admin-layout .admin-add-button,
+.admin-layout .admin-primary-button {
+  background: var(--admin-ink);
+  border-color: var(--admin-ink);
+  color: #ffffff;
+}
+
+.admin-layout .admin-add-button:hover,
+.admin-layout .admin-primary-button:hover {
+  background: #000000;
+}
+
+.admin-layout .stat-card {
+  border-bottom-color: var(--admin-ink);
+}
+
+.admin-layout .admin-footer span,
+.admin-layout .admin-footer strong,
+.admin-layout .admin-footer p {
+  color: var(--admin-ink);
+  font-weight: 600;
+}
+
+.admin-layout .inventory-filters button.active {
+  background: var(--admin-ink);
+  color: #ffffff;
+}
+
+.admin-layout .inventory-toggle,
+.admin-layout .inventory-actions button {
+  border-color: var(--admin-ink);
+}
+
+.admin-layout .admin-nav-link .nav-icon,
+.admin-layout .sidebar-logout span {
+  color: var(--admin-ink);
+}

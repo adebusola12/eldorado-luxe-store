@@ -18,17 +18,11 @@ const WHATSAPP_NUMBER = "2349061363473"; // Add international digits only, e.g. 
 const BUSINESS_EMAIL = "Igbedelekan6@gmail.com";
 const BUSINESS_PHONE = "07014969829";
 
-const PRODUCTS_PER_PAGE = 6;
+const PRODUCTS_PER_PAGE = 8; // 4 across x 2 rows
 
-// Pictures that fade in one after the other in the hero.
-// Put the image files in the "public/images" folder with these exact names.
-// A picture that is missing is simply skipped, so the site never breaks.
-const HERO_SLIDES = [
-  "/images/eldorado-hero.png",
-  "/images/hero-senator.jpg",
-  "/images/hero-two-piece.jpg",
-];
-const HERO_SECONDS = 6;
+// The single picture shown in the hero.
+// Put the file in the "public/images" folder with this exact name.
+const HERO_IMAGE = "/images/outfit.jpg";
 
 // Messages that scroll across the top of the website
 const ANNOUNCEMENTS = [
@@ -46,6 +40,38 @@ const collections = [
   { name: "Two-Piece", folder: "two-piece", description: "Coordinated looks with a modern edge." },
   { name: "Dansiki", folder: "dansiki", description: "Heritage-inspired style with character." },
 ];
+
+// Compares category names loosely, so "Two Piece", "two-piece" and
+// "Senator" still match "Two-Piece" and "Senator Wear".
+function normalizeName(value) {
+  return String(value || "").toLowerCase().replace(/[^a-z0-9]/g, "");
+}
+
+function sameCategory(a, b) {
+  const first = normalizeName(a);
+  const second = normalizeName(b);
+
+  if (!first || !second) return false;
+  if (first === second) return true;
+
+  return (
+    first.length >= 5 &&
+    second.length >= 5 &&
+    (first.startsWith(second) || second.startsWith(first))
+  );
+}
+
+// Gives every outfit a scrambled but repeatable number for one visit
+function mixOrder(id, seed) {
+  const text = `${id}-${seed}`;
+  let hash = 2166136261;
+
+  for (let i = 0; i < text.length; i += 1) {
+    hash = Math.imul(hash ^ text.charCodeAt(i), 16777619);
+  }
+
+  return hash >>> 0;
+}
 
 function formatPrice(price) {
   return `₦${Number(price).toLocaleString("en-NG")}`;
@@ -70,6 +96,8 @@ const PAGE_ROUTES = [
   "consultation",
   "account",
 ];
+
+const ADMIN_HASH = /(^#|\/)admin\/?$/i;
 
 function readRoute() {
   const raw = window.location.hash || "";
@@ -119,9 +147,11 @@ function scrollToProducts() {
 
 function App() {
   const [route, setRoute] = useState(readRoute);
+  const [shuffleSeed] = useState(() => Math.random());
   const [currentPage, setCurrentPage] = useState(1);
   const [products, setProducts] = useState([]);
   const [productsLoading, setProductsLoading] = useState(true);
+  const [productsError, setProductsError] = useState("");
   const [cart, setCart] = useState(getSavedCart);
   const [cartOpen, setCartOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
@@ -129,45 +159,7 @@ function App() {
   const [searchTerm, setSearchTerm] = useState("");
   const [notice, setNotice] = useState("");
   const customer = useCustomer();
-  const [heroSlides, setHeroSlides] = useState([HERO_SLIDES[0]]);
-  const [heroIndex, setHeroIndex] = useState(0);
   const { founder, collectionInfo } = useSiteContent();
-
-  // Work out which hero pictures actually exist
-  useEffect(() => {
-    let cancelled = false;
-
-    Promise.all(
-      HERO_SLIDES.map(
-        (src) =>
-          new Promise((resolve) => {
-            const img = new Image();
-            img.onload = () => resolve(src);
-            img.onerror = () => resolve(null);
-            img.src = src;
-          })
-      )
-    ).then((found) => {
-      if (cancelled) return;
-      const ok = found.filter(Boolean);
-      if (ok.length > 0) setHeroSlides(ok);
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  // Move to the next picture every few seconds
-  useEffect(() => {
-    if (heroSlides.length < 2) return undefined;
-
-    const timer = setInterval(() => {
-      setHeroIndex((current) => (current + 1) % heroSlides.length);
-    }, HERO_SECONDS * 1000);
-
-    return () => clearInterval(timer);
-  }, [heroSlides]);
 
   // Follow the page address
   useEffect(() => {
@@ -223,6 +215,7 @@ function App() {
 
       if (error) {
         console.error("Error loading products:", error.message);
+        setProductsError(error.message);
         setProductsLoading(false);
         return;
       }
@@ -236,6 +229,17 @@ function App() {
         badge: product.is_featured ? "FEATURED" : "",
       }));
 
+      const unmatched = formattedProducts.filter(
+        (item) => !collections.some((c) => sameCategory(c.name, item.category))
+      );
+
+      if (unmatched.length > 0) {
+        console.warn(
+          "These outfits have a category that matches no collection:",
+          [...new Set(unmatched.map((item) => item.category))]
+        );
+      }
+
       setProducts(formattedProducts);
       setProductsLoading(false);
     }
@@ -247,20 +251,38 @@ function App() {
   const cartTotal = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
   // The collection being viewed ("All" on every other page)
-  const selectedCategory = route.page === "collection" ? route.arg : "All";
-  const collectionDetails = collections.find(
-    (collection) => collection.name === selectedCategory
+  const selectedCategory =
+    route.page === "collection"
+      ? route.arg
+      : "All";
+  const collectionDetails = collections.find((collection) =>
+    sameCategory(collection.name, selectedCategory)
   );
 
   const activeSearch = route.page === "shop" ? searchTerm : "";
+
+  // Colours and sizes the owner entered for the collection being viewed
+  const activeInfo = collectionInfo?.[collectionDetails?.name] || {};
+  const activeColors = Array.isArray(activeInfo.colors) ? activeInfo.colors : [];
+  const activeSizes = Array.isArray(activeInfo.sizes) ? activeInfo.sizes : [];
 
   const visibleProducts = useMemo(() => {
     let result =
       selectedCategory === "All"
         ? products
-        : products.filter((product) => product.category === selectedCategory);
+        : products.filter((product) =>
+            sameCategory(product.category, selectedCategory)
+          );
 
     const query = activeSearch.trim().toLowerCase();
+
+    // "View all outfits" is shown in a mixed order (it changes on every visit
+    // but stays the same while you flip through the pages)
+    if (selectedCategory === "All") {
+      result = [...result].sort(
+        (a, b) => mixOrder(a.id, shuffleSeed) - mixOrder(b.id, shuffleSeed)
+      );
+    }
 
     if (query) {
       result = result.filter((product) =>
@@ -269,9 +291,9 @@ function App() {
     }
 
     return result;
-  }, [selectedCategory, activeSearch, products]);
+  }, [selectedCategory, activeSearch, products, shuffleSeed]);
 
-  // PAGINATION (6 outfits per page)
+  // PAGINATION (8 outfits per page)
   const totalPages = Math.max(1, Math.ceil(visibleProducts.length / PRODUCTS_PER_PAGE));
   const safePage = Math.min(currentPage, totalPages);
 
@@ -407,7 +429,22 @@ function App() {
     setSearchOpen(false);
   }
 
-  const isAdminPage = window.location.pathname === "/admin";
+  // The admin opens from  /admin  and also from addresses like  /#home/admin
+  const [openedAdminByHash, setOpenedAdminByHash] = useState(() =>
+    ADMIN_HASH.test(window.location.hash)
+  );
+
+  useEffect(() => {
+    function onHashChange() {
+      if (ADMIN_HASH.test(window.location.hash)) setOpenedAdminByHash(true);
+    }
+
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
+
+  const isAdminPage =
+    window.location.pathname.replace(/\/+$/, "") === "/admin" || openedAdminByHash;
   const [adminUser, setAdminUser] = useState(null);
   const [adminChecking, setAdminChecking] = useState(isAdminPage);
 
@@ -451,6 +488,21 @@ function App() {
     <>
       <div className="product-grid">
         {displayedProducts.map((product) => (
+          route.page !== "collection" ? (
+            <article className="product-card outfit-only" key={product.id}>
+              <div className="product-image">
+                <a
+                  className="product-link"
+                  href={`#/collection/${encodeURIComponent(product.category)}`}
+                  aria-label={`See all ${product.category} outfits`}
+                >
+                  <img src={product.image} alt={product.name} loading="lazy" />
+                </a>
+              </div>
+
+              {isSearching && <p className="outfit-name">{product.name}</p>}
+            </article>
+          ) : (
           <article className="product-card" key={product.id}>
 
             <div className="product-image">
@@ -489,6 +541,32 @@ function App() {
 
             </div>
 
+            {(activeColors.length > 0 || activeSizes.length > 0) && (
+                <div className="product-options">
+                  {activeColors.length > 0 && (
+                    <div className="product-option-line">
+                      <span className="product-option-label">Colours</span>
+                      <span className="product-option-dots">
+                        {activeColors.map((color, index) => (
+                          <i
+                            key={`${color.name}-${index}`}
+                            style={{ backgroundColor: color.hex || "#cccccc" }}
+                            title={color.name}
+                          />
+                        ))}
+                      </span>
+                    </div>
+                  )}
+
+                  {activeSizes.length > 0 && (
+                    <div className="product-option-line">
+                      <span className="product-option-label">Sizes</span>
+                      <span>{activeSizes.join(" · ")}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
             <button
               type="button"
               className="add-to-bag-button"
@@ -498,19 +576,22 @@ function App() {
             </button>
 
           </article>
+          )
         ))}
 
         {productsLoading ? (
           <p className="no-results">Loading our collection...</p>
         ) : visibleProducts.length === 0 ? (
           <p className="no-results">
-            No outfits found. Try another search.
+            {productsError
+              ? `We couldn't load the outfits (${productsError}).`
+              : "No outfits found. Try another search."}
           </p>
         ) : null}
 
       </div>
 
-      {totalPages > 1 && (
+      {(totalPages > 1 || (route.page === "shop" && visibleProducts.length > 0)) && (
         <nav className="pagination" aria-label="Product pages">
 
           <button
@@ -659,7 +740,7 @@ function App() {
           <a href="#home" onClick={() => setMenuOpen(false)}>Home</a>
 
           <button onClick={showAllProducts}>
-            Shop All
+            All Outfits
           </button>
 
           <p>COLLECTIONS</p>
@@ -886,62 +967,36 @@ function App() {
         {route.page === "home" && (
           <>
         {/* HERO SECTION */}
-        <section className="hero" id="home">
+<section className="hero hero-split" id="home">
 
-          <div className="hero-slides" aria-hidden="true">
-            {heroSlides.map((src, index) => (
-              <div
-                key={src}
-                className={`hero-slide ${index === heroIndex ? "active" : ""}`}
-                style={{ backgroundImage: `url("${src}")` }}
-              />
-            ))}
-          </div>
+              <div className="hero-copy">
+                <p className="eyebrow">THE MODERN GENTLEMAN</p>
 
-          <div className="hero-shade" />
+                <h1>
+                  Tradition,<br />
+                  <em>tailored to excellence.</em>
+                </h1>
 
-          {heroSlides.length > 1 && (
-            <div className="hero-dots">
-              {heroSlides.map((src, index) => (
-                <button
-                  type="button"
-                  key={src}
-                  className={index === heroIndex ? "active" : ""}
-                  aria-label={`Show picture ${index + 1}`}
-                  onClick={() => setHeroIndex(index)}
-                />
-              ))}
-            </div>
-          )}
+                <p className="hero-description">
+                  Discover Nigerian traditional menswear crafted for presence,
+                  confidence and distinction.
+                </p>
 
-          <div className="hero-content">
-            <p className="eyebrow">THE MODERN GENTLEMAN</p>
+              </div>
 
-            <h1>
-              Tradition,<br />
-              <em>tailored to excellence.</em>
-            </h1>
+              <div className="hero-media">
+                <div className="hero-slides" aria-hidden="true">
+                  <div
+                    className="hero-slide active"
+                    style={{ backgroundImage: `url("${HERO_IMAGE}")` }}
+                  />
+                </div>
+              </div>
 
-            <p className="hero-description">
-              Discover Nigerian traditional menswear crafted for presence,
-              confidence and distinction.
-            </p>
+            </section>
 
-            <div className="hero-actions">
-              <a className="hero-button hero-button-solid" href="#shop">
-                EXPLORE MEN'S COLLECTION
-              </a>
-              <a className="hero-button hero-button-line" href="#/consultation">
-                BOOK A CONSULTATION
-              </a>
-            </div>
-          </div>
-
-          <span className="hero-caption">
-            ELDORADO LUXE · THE LUNGU TAILOR
-          </span>
-
-        </section>
+            {/* MEET THE FOUNDER (right under the hero) */}
+            <FounderSection founder={founder} />
 
         {/* BRAND VALUES */}
         <section className="intro-strip">
@@ -967,8 +1022,8 @@ function App() {
               <div className="collection-grid" id="collections">
 
                 {collections.map((collection, index) => {
-                  const firstProduct = products.find(
-                    (product) => product.category === collection.name
+                  const firstProduct = products.find((product) =>
+                    sameCategory(product.category, collection.name)
                   );
 
                   return (
@@ -978,11 +1033,17 @@ function App() {
                       key={collection.name}
                       onClick={() => chooseCollection(collection.name)}
                     >
-                      <img
-                        src={firstProduct?.image || "/images/eldorado-hero.png"}
-                        alt={`${collection.name} collection`}
-                        loading="lazy"
-                      />
+                      {collectionInfo?.[collection.name]?.cover || firstProduct?.image ? (
+                        <img
+                          src={collectionInfo?.[collection.name]?.cover || firstProduct.image}
+                          alt={`${collection.name} collection`}
+                          loading="lazy"
+                        />
+                      ) : (
+                        <span className="collection-tile-empty">
+                          {productsError ? "Couldn't load outfits" : "No outfit added yet"}
+                        </span>
+                      )}
 
                       <span className="collection-tile-shade" />
 
@@ -997,10 +1058,11 @@ function App() {
 
               </div>
 
+              {/* VIEW ALL OUTFITS (opens its own page, 8 per page) */}
               <div className="view-all-wrap">
-                <button className="view-all-button" onClick={showAllProducts}>
-                  VIEW ALL PRODUCTS <span>→</span>
-                </button>
+                <a className="view-all-button" href="#/shop">
+                  VIEW ALL OUTFITS <span>→</span>
+                </a>
               </div>
 
             </section>
@@ -1017,13 +1079,13 @@ function App() {
               <h2>
                 {isSearching
                   ? `Results for “${searchTerm.trim()}”`
-                  : "Discover your next signature."}
+                  : "View all outfits"}
               </h2>
 
               <p>
                 {isSearching
                   ? `${visibleProducts.length} outfit(s) found.`
-                  : "Pieces chosen to make every entrance memorable."}
+                  : "Tap an outfit to see its collection, details and prices."}
               </p>
 
               {isSearching && (
@@ -1035,22 +1097,6 @@ function App() {
                   CLEAR SEARCH ×
                 </button>
               )}
-            </div>
-
-            <div className="category-filters">
-              <button className="filter active" onClick={showAllProducts}>
-                VIEW ALL
-              </button>
-
-              {collections.map((collection) => (
-                <button
-                  key={collection.name}
-                  className="filter"
-                  onClick={() => chooseCollection(collection.name)}
-                >
-                  {collection.name}
-                </button>
-              ))}
             </div>
 
             {productListing}
@@ -1076,13 +1122,22 @@ function App() {
                 <div className="collection-intro">
 
                   <div className="collection-intro-image">
-                    <img
-                      src={
-                        products.find((item) => item.category === collectionDetails.name)
-                          ?.image || "/images/eldorado-hero.png"
-                      }
-                      alt={`${collectionDetails.name} collection`}
-                    />
+                    {collectionInfo?.[collectionDetails.name]?.cover ||
+                    products.find((item) =>
+                      sameCategory(item.category, collectionDetails.name)
+                    )?.image ? (
+                      <img
+                        src={
+                          collectionInfo?.[collectionDetails.name]?.cover ||
+                          products.find((item) =>
+                            sameCategory(item.category, collectionDetails.name)
+                          ).image
+                        }
+                        alt={`${collectionDetails.name} collection`}
+                      />
+                    ) : (
+                      <span className="collection-tile-empty">No outfit added yet</span>
+                    )}
                   </div>
 
                   <div className="collection-intro-text">
@@ -1093,6 +1148,18 @@ function App() {
                       {collectionInfo?.[collectionDetails.name]?.description ||
                         collectionDetails.description}
                     </p>
+
+                    {activeSizes.length > 0 && (
+                      <div className="color-row">
+                        <span className="color-row-label">AVAILABLE SIZES</span>
+
+                        <ul className="size-chips">
+                          {activeSizes.map((size) => (
+                            <li key={size}>{size}</li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
 
                     {Array.isArray(collectionInfo?.[collectionDetails.name]?.colors) &&
                       collectionInfo[collectionDetails.name].colors.length > 0 && (
@@ -1233,7 +1300,7 @@ function App() {
           <div>
             <h3>QUICK LINKS</h3>
             <a href="#home">Home</a>
-            <a href="#/shop">Shop All</a>
+            <a href="#/shop">All Outfits</a>
             <a href="#/story">Our Story</a>
             <a href="#/founder">Meet the Founder</a>
             <a href="#/gallery">Gallery</a>
@@ -1251,18 +1318,6 @@ function App() {
           </div>
 
           <div>
-            <h3>COLLECTIONS</h3>
-            {collections.map((collection) => (
-              <a
-                href={`#/collection/${encodeURIComponent(collection.name)}`}
-                key={collection.name}
-              >
-                {collection.name}
-              </a>
-            ))}
-          </div>
-
-          <div>
             <h3>CONTACT</h3>
             <a href={`mailto:${BUSINESS_EMAIL}`}>{BUSINESS_EMAIL}</a>
             <a href={`tel:+234${BUSINESS_PHONE.replace(/^0/, "")}`}>
@@ -1273,27 +1328,50 @@ function App() {
 
           <div>
             <h3>FOLLOW US</h3>
-            <a
-              href="https://www.instagram.com/eldoradoluxe/"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Instagram
-            </a>
-            <a
-              href="https://www.tiktok.com/@eldoradoluxe"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              TikTok
-            </a>
-            <a
-              href="https://www.google.com/search?q=Eldorado+luxe"
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              Find us on Google
-            </a>
+
+            <div className="footer-social">
+              <a
+                href="https://www.instagram.com/eldoradoluxe/"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Instagram"
+                title="Instagram"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <rect x="3" y="3" width="18" height="18" rx="5" />
+                  <circle cx="12" cy="12" r="4.2" />
+                  <circle cx="17.4" cy="6.6" r="1.1" className="dot" />
+                </svg>
+              </a>
+
+              <a
+                href="https://www.tiktok.com/@eldoradoluxe"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="TikTok"
+                title="TikTok"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M14 3v11.2a3.8 3.8 0 1 1-3.8-3.8" />
+                  <path d="M14 3c.3 2.6 1.9 4.4 4.6 4.7" />
+                </svg>
+              </a>
+
+              <a
+                href="https://www.google.com/search?q=Eldorado+luxe"
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="Find us on Google"
+                title="Find us on Google"
+              >
+                <svg viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M20.5 12.2c0-.6-.1-1.1-.2-1.6H12v3.1h4.8a4.1 4.1 0 0 1-1.8 2.7v2.2h2.9c1.7-1.6 2.6-3.9 2.6-6.4Z" className="fill" />
+                  <path d="M12 21c2.4 0 4.5-.8 5.9-2.2L15 16.6c-.8.5-1.8.9-3 .9-2.3 0-4.3-1.6-5-3.7H4v2.300A9 9 0 0 0 12 21Z" className="fill" />
+                  <path d="M7 13.800a5.400 5.400 0 0 1 0-3.600V7.900H4a9 9 0 0 0 0 8.200l3-2.300Z" className="fill" />
+                  <path d="M12 6.600c1.300 0 2.500.5 3.400 1.300l2.500-2.500A9 9 0 0 0 4 7.900l3 2.300c.7-2.100 2.700-3.600 5-3.600Z" className="fill" />
+                </svg>
+              </a>
+            </div>
           </div>
 
         </div>

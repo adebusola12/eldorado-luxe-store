@@ -3,6 +3,7 @@ import { supabase } from "./supabaseClient";
 import "./AdminDashboard.css";
 import "./AdminDashboardUpdates.css";
 import "./AdminNewSections.css";
+import "./AdminTheme.css";
 import AdminSiteContent from "./AdminSiteContent";
 import AdminGallery from "./AdminGallery";
 import AdminConsultations from "./AdminConsultations";
@@ -19,6 +20,22 @@ const COLLECTION_LIST = [
   { name: "Dansiki", description: "Heritage-inspired style with character." },
 ];
 const INVENTORY_PER_PAGE = 6;
+
+// The admin shows one section at a time. The menu link decides which.
+const ADMIN_VIEWS = [
+  "overview",
+  "add-product",
+  "inventory",
+  "site-content",
+  "gallery-admin",
+  "consultations",
+  "reviews-admin",
+];
+
+function viewFromHash() {
+  const name = window.location.hash.replace("#", "");
+  return ADMIN_VIEWS.includes(name) ? name : "overview";
+}
 
 async function readJsonResponse(response, serviceName) {
   const responseText = await response.text();
@@ -113,6 +130,17 @@ function AdminDashboard() {
   // Inventory filter + pages
   const [inventoryFilter, setInventoryFilter] = useState("All");
   const [inventoryPage, setInventoryPage] = useState(1);
+  const [view, setView] = useState(viewFromHash);
+
+  useEffect(() => {
+    function onHashChange() {
+      setView(viewFromHash());
+      window.scrollTo({ top: 0, behavior: "instant" });
+    }
+
+    window.addEventListener("hashchange", onHashChange);
+    return () => window.removeEventListener("hashchange", onHashChange);
+  }, []);
 
   async function loadProducts() {
     setLoading(true);
@@ -297,6 +325,10 @@ function AdminDashboard() {
     window.location.href = "/admin";
   }
 
+  function navClass(name) {
+    return view === name ? "admin-nav-link active" : "admin-nav-link";
+  }
+
   function chooseInventoryFilter(filter) {
     setInventoryFilter(filter);
     setInventoryPage(1);
@@ -430,37 +462,37 @@ function AdminDashboard() {
         <p className="sidebar-label">WORKSPACE</p>
 
         <nav className="admin-navigation">
-          <a href="#overview" className="admin-nav-link active">
+          <a href="#overview" className={navClass("overview")}>
             <span className="nav-icon">⌂</span>
             Dashboard
           </a>
 
-          <a href="#add-product" className="admin-nav-link">
+          <a href="#add-product" className={navClass("add-product")}>
             <span className="nav-icon">＋</span>
             Add a product
           </a>
 
-          <a href="#inventory" className="admin-nav-link">
+          <a href="#inventory" className={navClass("inventory")}>
             <span className="nav-icon">▤</span>
             Product inventory
           </a>
 
-          <a href="#site-content" className="admin-nav-link">
+          <a href="#site-content" className={navClass("site-content")}>
             <span className="nav-icon">✎</span>
             Site content
           </a>
 
-          <a href="#gallery-admin" className="admin-nav-link">
+          <a href="#gallery-admin" className={navClass("gallery-admin")}>
             <span className="nav-icon">▣</span>
             Gallery
           </a>
 
-          <a href="#consultations" className="admin-nav-link">
+          <a href="#consultations" className={navClass("consultations")}>
             <span className="nav-icon">✉</span>
             Consultations
           </a>
 
-          <a href="#reviews-admin" className="admin-nav-link">
+          <a href="#reviews-admin" className={navClass("reviews-admin")}>
             <span className="nav-icon">★</span>
             Reviews
           </a>
@@ -487,6 +519,8 @@ function AdminDashboard() {
       {/* MAIN CONTENT */}
       <section className="admin-main">
         <div className="admin-content">
+          {view === "overview" && (
+            <>
           {/* OVERVIEW */}
           <section id="overview" className="admin-greeting">
             <h1>Welcome back.</h1>
@@ -522,6 +556,9 @@ function AdminDashboard() {
             </article>
           </section>
 
+            </>
+          )}
+
           {/* NOTIFICATIONS */}
           {error && (
             <p className="admin-message admin-message-error" role="alert">
@@ -535,6 +572,8 @@ function AdminDashboard() {
             </p>
           )}
 
+          {view === "add-product" && (
+            <>
           {/* ADD PRODUCT */}
           <section id="add-product" className="admin-panel add-product-panel">
             <div className="panel-heading">
@@ -698,6 +737,11 @@ function AdminDashboard() {
             </form>
           </section>
 
+            </>
+          )}
+
+          {view === "inventory" && (
+            <>
           {/* PRODUCT INVENTORY */}
           <section id="inventory" className="admin-panel inventory-panel">
             <div className="panel-heading inventory-heading">
@@ -801,9 +845,7 @@ function AdminDashboard() {
                             setError("");
                             setSuccess("");
 
-                            document.getElementById("add-product")?.scrollIntoView({
-                              behavior: "smooth",
-                            });
+                            window.location.hash = "add-product";
                           }}
                         >
                           Edit
@@ -879,11 +921,16 @@ function AdminDashboard() {
             )}
           </section>
 
+            </>
+          )}
+
           {/* WEBSITE CONTENT, GALLERY, CONSULTATIONS AND REVIEWS */}
-          <AdminSiteContent collections={COLLECTION_LIST} />
-          <AdminGallery />
-          <AdminConsultations />
-          <AdminReviews />
+          {view === "site-content" && (
+            <AdminSiteContent collections={COLLECTION_LIST} />
+          )}
+          {view === "gallery-admin" && <AdminGallery />}
+          {view === "consultations" && <AdminConsultations />}
+          {view === "reviews-admin" && <AdminReviews />}
 
           <footer className="admin-footer">
             <span>ELDORADO LUXE</span>

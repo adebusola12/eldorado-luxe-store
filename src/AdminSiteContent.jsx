@@ -11,6 +11,15 @@ function AdminSiteContent({ collections }) {
   const [photoPreview, setPhotoPreview] = useState("");
   const photoInput = useRef(null);
 
+  const [tab, setTab] = useState("hero");
+  const [coverBusy, setCoverBusy] = useState("");
+
+  // Hero pictures (the big pictures at the top of the home page)
+  const [heroImages, setHeroImages] = useState([]);
+  const [heroFile, setHeroFile] = useState(null);
+  const [savingHero, setSavingHero] = useState(false);
+  const heroInput = useRef(null);
+
   const [info, setInfo] = useState({});
   const [loading, setLoading] = useState(true);
   const [savingFounder, setSavingFounder] = useState(false);
@@ -39,6 +48,9 @@ function AdminSiteContent({ collections }) {
           }
           if (row.key === "collections" && row.value) {
             setInfo(row.value);
+          }
+          if (row.key === "hero" && Array.isArray(row.value?.images)) {
+            setHeroImages(row.value.images);
           }
         });
       }
@@ -107,6 +119,57 @@ function AdminSiteContent({ collections }) {
     }
   }
 
+  async function saveHero(images) {
+    const { error } = await supabase
+      .from("site_settings")
+      .upsert({ key: "hero", value: { images }, updated_at: new Date().toISOString() });
+
+    if (error) throw error;
+    setHeroImages(images);
+  }
+
+  async function addHeroPicture(event) {
+    event.preventDefault();
+    if (!heroFile) {
+      setMessage({ type: "error", text: "Choose a picture first." });
+      return;
+    }
+    if (heroImages.length >= 5) {
+      setMessage({ type: "error", text: "You can have up to 5 hero pictures. Remove one first." });
+      return;
+    }
+    if (heroFile.size > 10 * 1024 * 1024) {
+      setMessage({ type: "error", text: "Please choose a picture smaller than 10 MB." });
+      return;
+    }
+
+    setSavingHero(true);
+    setMessage({ type: "", text: "" });
+
+    try {
+      const url = await uploadToCloudinary(heroFile, "image");
+      await saveHero([...heroImages, url]);
+      setHeroFile(null);
+      if (heroInput.current) heroInput.current.value = "";
+      setMessage({ type: "success", text: "Hero picture added. It now shows on the home page." });
+    } catch (error) {
+      setMessage({ type: "error", text: error.message || "Couldn't add the picture." });
+    } finally {
+      setSavingHero(false);
+    }
+  }
+
+  async function removeHeroPicture(index) {
+    if (!window.confirm("Remove this hero picture?")) return;
+
+    try {
+      await saveHero(heroImages.filter((_, i) => i !== index));
+      setMessage({ type: "success", text: "Hero picture removed." });
+    } catch (error) {
+      setMessage({ type: "error", text: error.message || "Couldn't remove the picture." });
+    }
+  }
+
   function collectionData(name) {
     const entry = info[name] || {};
     const fallback = collections.find((item) => item.name === name);
@@ -117,6 +180,13 @@ function AdminSiteContent({ collections }) {
           ? entry.description
           : fallback?.description || "",
       colors: Array.isArray(entry.colors) ? entry.colors : [],
+      cover: typeof entry.cover === "string" ? entry.cover : "",
+      // kept as text while typing, saved as a list
+      sizes: Array.isArray(entry.sizes)
+        ? entry.sizes.join(", ")
+        : typeof entry.sizes === "string"
+          ? entry.sizes
+          : "",
     };
   }
 
@@ -148,12 +218,9 @@ function AdminSiteContent({ collections }) {
     updateCollection(name, { colors: colors.filter((_, i) => i !== index) });
   }
 
-  async function saveCollections(event) {
-    event.preventDefault();
-    setSavingCollections(true);
-    setMessage({ type: "", text: "" });
-
-    // Save every collection, dropping colour rows that were left without a name.
+  // Everything about every collection, ready to save.
+  // Colour rows left without a name are dropped.
+  function buildCollectionsValue(coverOverrides = {}) {
     const value = {};
 
     collections.forEach((collection) => {
@@ -162,8 +229,60 @@ function AdminSiteContent({ collections }) {
       value[collection.name] = {
         description: data.description.trim(),
         colors: data.colors.filter((color) => color.name.trim()),
+        sizes: data.sizes
+          .split(",")
+          .map((size) => size.trim())
+          .filter(Boolean)
+          .slice(0, 12),
+        cover:
+          collection.name in coverOverrides
+            ? coverOverrides[collection.name]
+            : data.cover,
       };
     });
+
+    return value;
+  }
+
+  // Upload (or remove) a collection's cover picture and save it straight away
+  async function changeCover(name, file) {
+    setMessage({ type: "", text: "" });
+
+    if (file && file.size > 10 * 1024 * 1024) {
+      setMessage({ type: "error", text: "Please choose a picture smaller than 10 MB." });
+      return;
+    }
+
+    setCoverBusy(name);
+
+    try {
+      const url = file ? await uploadToCloudinary(file, "image") : "";
+      const value = buildCollectionsValue({ [name]: url });
+
+      const { error } = await supabase
+        .from("site_settings")
+        .upsert({ key: "collections", value, updated_at: new Date().toISOString() });
+
+      if (error) throw error;
+
+      setInfo(value);
+      setMessage({
+        type: "success",
+        text: file ? `${name} cover picture saved.` : `${name} cover picture removed.`,
+      });
+    } catch (error) {
+      setMessage({ type: "error", text: error.message || "Couldn't save the picture." });
+    } finally {
+      setCoverBusy("");
+    }
+  }
+
+  async function saveCollections(event) {
+    event.preventDefault();
+    setSavingCollections(true);
+    setMessage({ type: "", text: "" });
+
+    const value = buildCollectionsValue();
 
     const { error } = await supabase
       .from("site_settings")
@@ -188,8 +307,7 @@ function AdminSiteContent({ collections }) {
           <p className="admin-eyebrow">YOUR WEBSITE TEXT</p>
           <h2>Site content</h2>
           <p>
-            Edit the founder section and describe each collection, including the
-            colours it comes in.
+            Change the hero pictures, the founder section and each collection.
           </p>
         </div>
 
@@ -210,7 +328,87 @@ function AdminSiteContent({ collections }) {
         <p className="inventory-empty">Loading...</p>
       ) : (
         <>
+          <div className="admin-tabs" role="tablist">
+            {[
+              ["hero", "Hero pictures"],
+              ["founder", "Founder"],
+              ["collections", "Collections"],
+            ].map(([key, label]) => (
+              <button
+                key={key}
+                type="button"
+                role="tab"
+                aria-selected={tab === key}
+                className={tab === key ? "admin-tab active" : "admin-tab"}
+                onClick={() => {
+                  setTab(key);
+                  setMessage({ type: "", text: "" });
+                }}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+
+          {/* HERO PICTURES */}
+          {tab === "hero" && (
+            <form className="admin-product-form" onSubmit={addHeroPicture}>
+              <h3 className="admin-subheading">Hero pictures</h3>
+
+              <p className="admin-hint">
+                These fade one after the other at the top of the home page. Use
+                tall photos (portrait) of your best outfits. Up to 5.
+              </p>
+
+              {heroImages.length > 0 && (
+                <div className="admin-gallery-grid">
+                  {heroImages.map((url, index) => (
+                    <div className="admin-gallery-item" key={url}>
+                      <div className="admin-gallery-media">
+                        <img src={url} alt={`Hero ${index + 1}`} />
+                      </div>
+                      <div className="admin-gallery-body">
+                        <div className="inventory-actions">
+                          <button
+                            type="button"
+                            className="inventory-delete"
+                            onClick={() => removeHeroPicture(index)}
+                          >
+                            Remove
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <div className="admin-media-preview" style={{ marginTop: 22 }}>
+                <input
+                  ref={heroInput}
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) => setHeroFile(e.target.files[0] || null)}
+                />
+              </div>
+
+              <div className="form-footer">
+                <p>
+                  {heroImages.length === 0
+                    ? "No pictures yet, so the website shows its default picture."
+                    : `${heroImages.length} of 5 pictures added.`}
+                </p>
+
+                <button type="submit" className="admin-primary-button" disabled={savingHero}>
+                  {savingHero ? "UPLOADING..." : "ADD PICTURE"}
+                  <span>→</span>
+                </button>
+              </div>
+            </form>
+          )}
+
           {/* FOUNDER */}
+          {tab === "founder" && (
           <form className="admin-product-form" onSubmit={saveFounder}>
             <h3 className="admin-subheading">Meet the founder</h3>
 
@@ -291,10 +489,12 @@ function AdminSiteContent({ collections }) {
               </button>
             </div>
           </form>
+          )}
 
           {/* COLLECTIONS */}
-          <form className="admin-product-form admin-section-gap" onSubmit={saveCollections}>
-            <h3 className="admin-subheading">Collection descriptions and colours</h3>
+          {tab === "collections" && (
+          <form className="admin-product-form" onSubmit={saveCollections}>
+            <h3 className="admin-subheading">Collection descriptions, sizes and colours</h3>
 
             <div className="admin-collection-list">
               {collections.map((collection) => {
@@ -303,6 +503,48 @@ function AdminSiteContent({ collections }) {
                 return (
                   <div className="admin-collection-card" key={collection.name}>
                     <h4>{collection.name}</h4>
+
+                    <div className="admin-cover">
+                      <div className="admin-cover-preview">
+                        {data.cover ? (
+                          <img src={data.cover} alt={`${collection.name} cover`} />
+                        ) : (
+                          <span>No cover picture yet</span>
+                        )}
+                      </div>
+
+                      <div className="admin-cover-actions">
+                        <label className="inventory-toggle admin-cover-button">
+                          {coverBusy === collection.name
+                            ? "UPLOADING..."
+                            : data.cover
+                              ? "Change cover picture"
+                              : "Upload cover picture"}
+                          <input
+                            type="file"
+                            accept="image/*"
+                            hidden
+                            disabled={coverBusy !== ""}
+                            onChange={(e) => {
+                              const file = e.target.files[0];
+                              e.target.value = "";
+                              if (file) changeCover(collection.name, file);
+                            }}
+                          />
+                        </label>
+
+                        {data.cover && (
+                          <button
+                            type="button"
+                            className="inventory-delete"
+                            disabled={coverBusy !== ""}
+                            onClick={() => changeCover(collection.name, null)}
+                          >
+                            Remove
+                          </button>
+                        )}
+                      </div>
+                    </div>
 
                     <div className="admin-field">
                       <label htmlFor={`desc-${collection.name}`}>Description</label>
@@ -315,6 +557,22 @@ function AdminSiteContent({ collections }) {
                             description: e.target.value,
                           })
                         }
+                      />
+                    </div>
+
+                    <div className="admin-field">
+                      <label htmlFor={`sizes-${collection.name}`}>
+                        Available sizes (separate with commas)
+                      </label>
+                      <input
+                        id={`sizes-${collection.name}`}
+                        type="text"
+                        value={data.sizes}
+                        onChange={(e) =>
+                          updateCollection(collection.name, { sizes: e.target.value })
+                        }
+                        placeholder="e.g. M, L, XL, XXL"
+                        maxLength={60}
                       />
                     </div>
 
@@ -376,6 +634,7 @@ function AdminSiteContent({ collections }) {
               </button>
             </div>
           </form>
+          )}
         </>
       )}
 

@@ -16,6 +16,7 @@ export const DEFAULT_FOUNDER = {
 export function useSiteContent() {
   const [founder, setFounder] = useState(DEFAULT_FOUNDER);
   const [collectionInfo, setCollectionInfo] = useState({});
+  const [heroImages, setHeroImages] = useState([]);
 
   useEffect(() => {
     let mounted = true;
@@ -35,6 +36,10 @@ export function useSiteContent() {
         if (row.key === "collections" && row.value) {
           setCollectionInfo(row.value);
         }
+
+        if (row.key === "hero" && Array.isArray(row.value?.images)) {
+          setHeroImages(row.value.images.filter(Boolean));
+        }
       });
     }
 
@@ -45,5 +50,5 @@ export function useSiteContent() {
     };
   }, []);
 
-  return { founder, collectionInfo };
+  return { founder, collectionInfo, heroImages };
 }
